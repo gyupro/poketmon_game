@@ -1,0 +1,63 @@
+{
+    "id": "route_1",
+    "name": "Route 1",
+    "width": 20,
+    "height": 20,
+    "music": "route_1.mp3",
+    "wild_pokemon": {
+        "encounter_rate": 10,
+        "pokemon": [
+            {
+                "species": "Pidgey",
+                "min_level": 2,
+                "max_level": 5,
+                "encounter_rate": 50
+            },
+            {
+                "species": "Rattata",
+                "min_level": 2,
+                "max_level": 4,
+                "encounter_rate": 40
+            },
+            {
+                "species": "Caterpie",
+                "min_level": 3,
+                "max_level": 5,
+                "encounter_rate": 10
+            }
+        ]
+    },
+    "npcs": [
+        {
+            "name": "Bug Catcher Rick",
+            "x": 10,
+            "y": 8,
+            "dialogue": [
+                "Hey! You can't just walk past a trainer!",
+                "Let's battle!"
+            ],
+            "is_trainer": true,
+            "team": [
+                {"species": "Caterpie", "level": 4},
+                {"species": "Weedle", "level": 4}
+            ]
+        }
+    ],
+    "warps": [
+        {
+            "x": 10,
+            "y": 19,
+            "target_map": "pallet_town",
+            "target_x": 10,
+            "target_y": 1
+        },
+        {
+            "x": 10,
+            "y": 0,
+            "target_map": "viridian_city",
+            "target_x": 10,
+            "target_y": 19
+        }
+    ],
+    "description": "A peaceful path between Pallet Town and Viridian City"
+}

@@ -208,7 +208,7 @@ class World:
             self.interaction_cooldown -= dt
         
         # Check for wild encounters if player moved
-        if player.is_moving and not self.current_dialogue:
+        if not player.is_moving and not self.current_dialogue:
             grid_x, grid_y = player.get_grid_position()
             
             # Check if in tall grass
@@ -217,16 +217,16 @@ class World:
                 if self.last_encounter_position != (grid_x, grid_y):
                     self.steps_in_grass += 1
                     self.last_encounter_position = (grid_x, grid_y)
-                
-                # Check if encounter should occur
-                if self.encounter_system.should_encounter(self.current_map_id, self.steps_in_grass):
-                    # Check if repel is active
-                    lead_pokemon = player.get_lead_pokemon() if hasattr(player, 'get_lead_pokemon') else None
-                    lead_level = lead_pokemon.level if lead_pokemon else 1
                     
-                    if not self.encounter_system.check_repel(lead_level):
-                        self.steps_in_grass = 0
-                        return "wild_encounter"
+                    # Check if encounter should occur
+                    if self.encounter_system.should_encounter(self.current_map_id, self.steps_in_grass):
+                        # Check if repel is active
+                        lead_pokemon = player.active_pokemon if hasattr(player, 'active_pokemon') and player.active_pokemon else None
+                        lead_level = lead_pokemon.level if lead_pokemon else 1
+                        
+                        if not self.encounter_system.check_repel(lead_level):
+                            self.steps_in_grass = 0
+                            return "wild_encounter"
             else:
                 # Reset grass counter when not in grass
                 self.steps_in_grass = 0

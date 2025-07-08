@@ -1,0 +1,29 @@
+{
+    "id": "pallet_town",
+    "name": "Pallet Town",
+    "width": 20,
+    "height": 20,
+    "music": "pallet_town.mp3",
+    "wild_pokemon": null,
+    "npcs": [
+        {
+            "name": "Professor Oak",
+            "x": 9,
+            "y": 9,
+            "dialogue": [
+                "Hello there! Welcome to the world of Pokemon!",
+                "My name is Oak. People call me the Pokemon Professor!"
+            ]
+        }
+    ],
+    "warps": [
+        {
+            "x": 10,
+            "y": 0,
+            "target_map": "route_1",
+            "target_x": 10,
+            "target_y": 19
+        }
+    ],
+    "description": "A quiet town of new beginnings"
+}

@@ -342,8 +342,8 @@ class Pokemon:
         
         # Experience
         self.experience_group = species_data.get("experience_group", "medium_fast")
-        self.current_exp = self._calculate_exp_for_level(level)
-        self.exp_to_next_level = self._calculate_exp_for_level(level + 1) - self.current_exp
+        self.exp = self._calculate_exp_for_level(level)
+        self.exp_to_next_level = self._calculate_exp_for_level(level + 1) - self.exp
         
         # Battle stats modifiers (for stat stages in battle)
         self.stat_stages = {
@@ -435,11 +435,11 @@ class Pokemon:
     def gain_exp(self, amount: int) -> List[str]:
         """Gain experience and potentially level up. Returns list of events."""
         events = []
-        self.current_exp += amount
+        self.exp += amount
         events.append(f"{self.nickname} gained {amount} Exp. Points!")
         
         # Check for level up
-        while self.current_exp >= self._calculate_exp_for_level(self.level + 1) and self.level < 100:
+        while self.exp >= self._calculate_exp_for_level(self.level + 1) and self.level < 100:
             self.level += 1
             events.append(f"{self.nickname} grew to level {self.level}!")
             
@@ -476,11 +476,15 @@ class Pokemon:
         if self.level < 100:
             current_level_exp = self._calculate_exp_for_level(self.level)
             next_level_exp = self._calculate_exp_for_level(self.level + 1)
-            self.exp_to_next_level = next_level_exp - self.current_exp
+            self.exp_to_next_level = next_level_exp - self.exp
         else:
             self.exp_to_next_level = 0
         
         return events
+    
+    def get_exp_for_level(self, level: int) -> int:
+        """Get total experience required for a specific level."""
+        return self._calculate_exp_for_level(level)
     
     def take_damage(self, damage: int) -> List[str]:
         """Apply damage and check for fainting."""

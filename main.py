@@ -25,10 +25,14 @@ def main():
         
         print("Initializing sound system...")
         try:
+            # Initialize with no audio in WSL environment
+            pygame.mixer.pre_init(frequency=22050, size=-16, channels=2, buffer=1024)
             pygame.mixer.init()
         except pygame.error as e:
             print(f"Warning: Sound system initialization failed: {e}")
             print("Game will continue without sound.")
+            # Disable mixer completely if initialization fails
+            pygame.mixer.quit()
         
         # Set up display
         print("Setting up display...")

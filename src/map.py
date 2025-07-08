@@ -186,7 +186,7 @@ class Map:
         """Draw a single tile."""
         rect = pygame.Rect(x, y, self.tile_size, self.tile_size)
         
-        # Simple color-based rendering for now
+        # Enhanced color-based rendering with better visuals
         tile_colors = {
             TileType.EMPTY: (50, 50, 50),
             TileType.GRASS: (34, 139, 34),
@@ -207,21 +207,86 @@ class Map:
         color = tile_colors.get(tile.type, (0, 0, 0))
         pygame.draw.rect(screen, color, rect)
         
-        # Add some visual details
+        # Add enhanced visual details
         if tile.type == TileType.TALL_GRASS:
-            # Draw grass blades
-            for i in range(3):
-                blade_x = x + 8 + i * 8
-                blade_y = y + 20
+            # Draw animated grass blades
+            for i in range(4):
+                blade_x = x + 6 + i * 6
+                blade_y = y + 24
                 pygame.draw.line(screen, (20, 80, 20), 
-                               (blade_x, blade_y), (blade_x - 2, blade_y - 8), 2)
+                               (blade_x, blade_y), (blade_x - 2, blade_y - 10), 2)
+                pygame.draw.line(screen, (40, 100, 40), 
+                               (blade_x + 1, blade_y), (blade_x - 1, blade_y - 8), 1)
+                               
+            # Add grass texture
+            pygame.draw.rect(screen, (28, 90, 28), rect, 1)
+            
+        elif tile.type == TileType.GRASS:
+            # Add grass texture
+            for i in range(3):
+                dot_x = x + 10 + i * 6
+                dot_y = y + 10 + (i % 2) * 8
+                pygame.draw.circle(screen, (44, 154, 44), (dot_x, dot_y), 1)
+                
         elif tile.type == TileType.WATER:
-            # Draw water ripples
+            # Draw water ripples and shine
             pygame.draw.circle(screen, (100, 149, 237), (x + 16, y + 16), 8, 1)
+            pygame.draw.circle(screen, (120, 169, 255), (x + 12, y + 12), 4, 1)
+            pygame.draw.circle(screen, (80, 120, 200), (x + 20, y + 20), 3, 1)
+            
         elif tile.type == TileType.TREE:
-            # Draw tree trunk
+            # Draw tree trunk and leaves
             trunk_rect = pygame.Rect(x + 12, y + 20, 8, 12)
             pygame.draw.rect(screen, (101, 67, 33), trunk_rect)
+            # Tree canopy
+            pygame.draw.circle(screen, (34, 85, 34), (x + 16, y + 16), 12)
+            pygame.draw.circle(screen, (44, 95, 44), (x + 16, y + 16), 8)
+            
+        elif tile.type == TileType.PATH:
+            # Add path texture
+            pygame.draw.rect(screen, (159, 139, 121), rect, 1)
+            for i in range(2):
+                pebble_x = x + 8 + i * 12
+                pebble_y = y + 12 + (i % 2) * 8
+                pygame.draw.circle(screen, (119, 99, 81), (pebble_x, pebble_y), 1)
+                
+        elif tile.type == TileType.BUILDING_WALL:
+            # Add brick texture
+            pygame.draw.rect(screen, (125, 125, 125), rect, 1)
+            # Draw brick lines
+            for i in range(0, self.tile_size, 8):
+                pygame.draw.line(screen, (85, 85, 85), (x, y + i), (x + self.tile_size, y + i), 1)
+            for i in range(0, self.tile_size, 16):
+                pygame.draw.line(screen, (85, 85, 85), (x + i, y), (x + i, y + self.tile_size), 1)
+                
+        elif tile.type == TileType.BUILDING_FLOOR:
+            # Add floor tile pattern
+            pygame.draw.rect(screen, (180, 180, 180), rect, 1)
+            # Draw tile lines
+            pygame.draw.line(screen, (140, 140, 140), (x, y + self.tile_size//2), (x + self.tile_size, y + self.tile_size//2), 1)
+            pygame.draw.line(screen, (140, 140, 140), (x + self.tile_size//2, y), (x + self.tile_size//2, y + self.tile_size), 1)
+            
+        elif tile.type == TileType.FLOWER:
+            # Draw flower petals
+            center_x, center_y = x + 16, y + 16
+            petal_color = (255, 192, 203)
+            center_color = (255, 255, 0)
+            
+            # Draw petals
+            for i in range(6):
+                angle = i * 60
+                petal_x = center_x + int(6 * (angle / 60))
+                petal_y = center_y + int(6 * ((angle + 30) / 60))
+                pygame.draw.circle(screen, petal_color, (petal_x, petal_y), 3)
+            
+            # Draw center
+            pygame.draw.circle(screen, center_color, (center_x, center_y), 2)
+            
+        elif tile.type == TileType.ROCK:
+            # Draw rock with shading
+            pygame.draw.circle(screen, (108, 108, 108), (x + 16, y + 16), 12)
+            pygame.draw.circle(screen, (148, 148, 148), (x + 12, y + 12), 6)
+            pygame.draw.circle(screen, (88, 88, 88), (x + 20, y + 20), 4)
     
     def _draw_object(self, screen: pygame.Surface, obj: MapObject, x: int, y: int):
         """Draw an interactive object."""

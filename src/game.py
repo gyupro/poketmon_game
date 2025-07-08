@@ -421,9 +421,9 @@ class Game:
         
         # Starter options
         starters = [
-            ("Bulbasaur", (120, 200, 80), "Grass/Poison"),
-            ("Charmander", (240, 128, 48), "Fire"),
-            ("Squirtle", (104, 144, 240), "Water")
+            ("Bulbasaur", 1, (120, 200, 80), "Grass/Poison"),
+            ("Charmander", 4, (240, 128, 48), "Fire"),
+            ("Squirtle", 7, (104, 144, 240), "Water")
         ]
         
         card_width = 200
@@ -433,7 +433,7 @@ class Game:
         start_x = (self.SCREEN_WIDTH - total_width) // 2
         start_y = 150
         
-        for i, (name, color, type_text) in enumerate(starters):
+        for i, (name, species_id, color, type_text) in enumerate(starters):
             x = start_x + (i * (card_width + spacing))
             
             # Card background
@@ -448,10 +448,26 @@ class Game:
             pygame.draw.rect(self.screen, card_color, card_rect)
             pygame.draw.rect(self.screen, (100, 100, 100), card_rect, 2)
             
-            # Pokemon sprite placeholder
+            # Pokemon sprite
             sprite_rect = pygame.Rect(x + 50, start_y + 20, 100, 100)
-            pygame.draw.rect(self.screen, color, sprite_rect)
-            pygame.draw.rect(self.screen, (0, 0, 0), sprite_rect, 2)
+            sprite_filename = f"{species_id}_normal.png"
+            sprite_path = f"assets/sprites/{sprite_filename}"
+            
+            # Try to load and display the sprite
+            try:
+                sprite = pygame.image.load(sprite_path)
+                sprite = pygame.transform.scale(sprite, (100, 100))
+                self.screen.blit(sprite, sprite_rect)
+            except:
+                # Fallback to colored rectangle if sprite not found
+                pygame.draw.rect(self.screen, color, sprite_rect)
+                pygame.draw.rect(self.screen, (0, 0, 0), sprite_rect, 2)
+                
+                # Draw Pokemon name in the sprite area as fallback
+                fallback_font = pygame.font.Font(None, 16)
+                fallback_text = fallback_font.render(name, True, (255, 255, 255))
+                fallback_rect = fallback_text.get_rect(center=sprite_rect.center)
+                self.screen.blit(fallback_text, fallback_rect)
             
             # Pokemon name
             font = pygame.font.Font(None, 28)
