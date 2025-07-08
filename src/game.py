@@ -98,45 +98,14 @@ class Game:
         
     def select_starter(self, starter_index):
         """Select a starter Pokemon."""
-        # Give player a starter Pokemon with proper initialization
-        starters = [
-            ("Bulbasaur", PokemonType.GRASS, 1, {
-                "hp": 45, "attack": 49, "defense": 49, 
-                "sp_attack": 65, "sp_defense": 65, "speed": 45
-            }),
-            ("Charmander", PokemonType.FIRE, 4, {
-                "hp": 39, "attack": 52, "defense": 43,
-                "sp_attack": 60, "sp_defense": 50, "speed": 65
-            }),
-            ("Squirtle", PokemonType.WATER, 7, {
-                "hp": 44, "attack": 48, "defense": 65,
-                "sp_attack": 50, "sp_defense": 64, "speed": 43
-            })
-        ]
+        # Use the create_pokemon_from_species function since we have the data
+        from .pokemon import create_pokemon_from_species
         
-        starter_name, starter_type, starter_id, base_stats = starters[starter_index]
-        starter_pokemon = Pokemon(
-            species_id=starter_id,
-            species_name=starter_name,
-            types=[starter_type],
-            base_stats=base_stats,
-            level=5
-        )
+        # Starter Pokemon IDs (Bulbasaur, Charmander, Squirtle)
+        starter_ids = [1, 4, 7]
         
-        # Give starter some moves
-        from .pokemon import Move
-        starter_pokemon.moves = [
-            Move("Tackle", PokemonType.NORMAL, "physical", 40, 100, 35),
-            Move("Growl", PokemonType.NORMAL, "status", 0, 100, 40, effect="lower_attack")
-        ]
-        
-        # Add type-specific move
-        if starter_type == PokemonType.GRASS:
-            starter_pokemon.moves.append(Move("Vine Whip", PokemonType.GRASS, "physical", 45, 100, 25))
-        elif starter_type == PokemonType.FIRE:
-            starter_pokemon.moves.append(Move("Ember", PokemonType.FIRE, "special", 40, 100, 25))
-        elif starter_type == PokemonType.WATER:
-            starter_pokemon.moves.append(Move("Water Gun", PokemonType.WATER, "special", 40, 100, 25))
+        # Create the starter Pokemon
+        starter_pokemon = create_pokemon_from_species(starter_ids[starter_index], level=5)
         
         self.player.add_pokemon(starter_pokemon)
         
