@@ -53,6 +53,11 @@ class Game:
         self.ui = UI(self.screen)
         self.world: Optional[World] = None
         
+        # Enhanced encounter system
+        self.encounter_effects = EncounterEffects(self.screen)
+        self.encounter_info = EncounterInfo()
+        self.show_encounter_info = True  # Toggle with F1 key
+        
         self.show_loading_screen("Loading complete!")
         
         # Input handling
@@ -378,6 +383,22 @@ class Game:
             print(f"No encounter data for area: {self.world.current_map_id}")
             return
         
+        # Start encounter effects
+        if wild_pokemon.is_shiny:
+            # Special effect for shiny Pokemon
+            self.encounter_effects.start_flash((255, 215, 0))  # Gold flash
+            self.encounter_effects.add_shiny_sparkle(
+                self.player.pixel_x - self.world.camera_x,
+                self.player.pixel_y - self.world.camera_y
+            )
+            self.encounter_effects.start_encounter_transition("flash")
+        else:
+            # Normal encounter transition
+            self.encounter_effects.start_encounter_transition("spiral")
+        
+        # Small delay before battle (handled by transition effect)
+        # In a real implementation, you'd wait for the transition to complete
+        
         # Start battle
         self.current_battle = Battle(self.player, wild_pokemon, BattleType.WILD)
         self.current_battle.start()
@@ -425,6 +446,23 @@ class Game:
         """Render the world exploration view."""
         if self.world and self.player:
             self.world.render(self.screen, self.player)
+            
+            # Render encounter effects
+            self.encounter_effects.render()
+            
+            # Render encounter info HUD
+            if self.show_encounter_info:
+                encounter_data = self.world.get_encounter_info()
+                self.encounter_info.render(self.screen, encounter_data)
+                
+            # Instructions hint
+            font = pygame.font.Font(None, 20)
+            hint_text = font.render("Press F1 to toggle encounter info", True, (255, 255, 255))
+            hint_bg = pygame.Surface((hint_text.get_width() + 10, hint_text.get_height() + 4))
+            hint_bg.fill((0, 0, 0))
+            hint_bg.set_alpha(128)
+            self.screen.blit(hint_bg, (self.SCREEN_WIDTH - hint_text.get_width() - 15, 5))
+            self.screen.blit(hint_text, (self.SCREEN_WIDTH - hint_text.get_width() - 10, 7))
         else:
             # Fallback rendering
             self.screen.fill((34, 139, 34))
