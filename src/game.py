@@ -99,6 +99,13 @@ class Game:
     def show_starter_selection(self):
         """Show starter Pokemon selection screen."""
         self.game_state = GameState.MENU
+        
+        # Show helpful message
+        print("\n=== GAME TIP ===")
+        print("You're starting in Pallet Town. To find wild Pokemon:")
+        print("1. Go NORTH to Route 1")
+        print("2. Walk in the TALL GRASS")
+        print("================\n")
         self.starter_selection_active = True
         self.selected_starter = 0
         
@@ -464,6 +471,21 @@ class Game:
             hint_bg.set_alpha(128)
             self.screen.blit(hint_bg, (self.SCREEN_WIDTH - hint_text.get_width() - 15, 5))
             self.screen.blit(hint_text, (self.SCREEN_WIDTH - hint_text.get_width() - 10, 7))
+            
+            # Show tip if in area without encounters
+            if self.world.current_map_id not in self.world.encounter_system.encounter_tables:
+                tip_font = pygame.font.Font(None, 28)
+                tip_text = "No wild Pokemon here! Go north to Route 1!"
+                text_surface = tip_font.render(tip_text, True, (255, 255, 0))
+                text_rect = text_surface.get_rect(center=(self.SCREEN_WIDTH // 2, 60))
+                
+                # Draw background
+                bg_rect = text_rect.inflate(20, 10)
+                pygame.draw.rect(self.screen, (0, 0, 0), bg_rect)
+                pygame.draw.rect(self.screen, (255, 255, 0), bg_rect, 2)
+                
+                # Draw text
+                self.screen.blit(text_surface, text_rect)
         else:
             # Fallback rendering
             self.screen.fill((34, 139, 34))
