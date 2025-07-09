@@ -329,9 +329,18 @@ def create_sample_maps() -> Dict[str, Map]:
                 if 5 <= y <= 25:
                     town.set_tile(x, y, TileType.PATH)
             
+            # Add clear path to Route 1 exit
+            if 18 <= x <= 22 and y <= 5:
+                town.set_tile(x, y, TileType.PATH)
+            
             # Add trees for natural borders (denser forest feel)
-            if x <= 2 or x >= 37 or y <= 2 or y >= 27:
+            # Leave gap for Route 1 exit at top
+            if x <= 2 or x >= 37 or y >= 27:
                 town.set_tile(x, y, TileType.TREE)
+            elif y <= 2:
+                # Only add trees at top if not in exit area
+                if x < 17 or x > 23:
+                    town.set_tile(x, y, TileType.TREE)
             # Additional tree clusters
             if (3 <= x <= 6 and 3 <= y <= 8) or (33 <= x <= 36 and 20 <= y <= 25):
                 if random.random() > 0.3:  # Random tree placement
@@ -415,6 +424,11 @@ def create_sample_maps() -> Dict[str, Map]:
     town.set_tile(11, 5, TileType.SIGN)
     town.add_object(MapObject(11, 5, "sign", {
         "text": "Pokemon Center\nHeal your Pokemon for free!"
+    }))
+    
+    town.set_tile(20, 3, TileType.SIGN)
+    town.add_object(MapObject(20, 3, "sign", {
+        "text": "Route 1 - North\nWild Pokemon in tall grass!"
     }))
     
     # Add warps

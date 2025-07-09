@@ -104,9 +104,10 @@ class Game:
         print("\n=== GAME TIP ===")
         print("You're starting in Pallet Town at position (10, 10)")
         print("To find wild Pokemon:")
-        print("1. Go STRAIGHT UP (NORTH) to the VERY TOP of the town")
-        print("2. Exit is at the top edge (y=0, x=18-22)")
-        print("3. Once in Route 1, walk in the TALL GRASS")
+        print("1. Go UP (NORTH) towards the center-top of town")
+        print("2. Look for the path around x=20, y=3 (near the sign)")
+        print("3. Exit is at the very top (y=0, x=18-22)")
+        print("4. Once in Route 1, walk in the TALL GRASS")
         print("================\n")
         self.starter_selection_active = True
         self.selected_starter = 0
