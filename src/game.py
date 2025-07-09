@@ -11,6 +11,7 @@ from .battle import Battle, BattleType
 from .ui import UI, UIState
 from .items import get_item
 from .world import World
+from .encounter_effects import EncounterEffects, EncounterInfo
 
 
 class GameState:
