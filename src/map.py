@@ -162,10 +162,10 @@ class Map:
     def render(self, screen: pygame.Surface, camera_x: int = 0, camera_y: int = 0):
         """Render the map to the screen."""
         # Calculate visible tile range
-        start_x = max(0, camera_x // self.tile_size)
-        start_y = max(0, camera_y // self.tile_size)
-        end_x = min(self.width, (camera_x + screen.get_width()) // self.tile_size + 1)
-        end_y = min(self.height, (camera_y + screen.get_height()) // self.tile_size + 1)
+        start_x = int(max(0, camera_x // self.tile_size))
+        start_y = int(max(0, camera_y // self.tile_size))
+        end_x = int(min(self.width, (camera_x + screen.get_width()) // self.tile_size + 1))
+        end_y = int(min(self.height, (camera_y + screen.get_height()) // self.tile_size + 1))
         
         # Draw tiles
         for y in range(start_y, end_y):
