@@ -102,9 +102,11 @@ class Game:
         
         # Show helpful message
         print("\n=== GAME TIP ===")
-        print("You're starting in Pallet Town. To find wild Pokemon:")
-        print("1. Go NORTH to Route 1")
-        print("2. Walk in the TALL GRASS")
+        print("You're starting in Pallet Town at position (10, 10)")
+        print("To find wild Pokemon:")
+        print("1. Go STRAIGHT UP (NORTH) to the VERY TOP of the town")
+        print("2. Exit is at the top edge (y=0, x=18-22)")
+        print("3. Once in Route 1, walk in the TALL GRASS")
         print("================\n")
         self.starter_selection_active = True
         self.selected_starter = 0
@@ -462,6 +464,17 @@ class Game:
             if self.show_encounter_info:
                 encounter_data = self.world.get_encounter_info()
                 self.encounter_info.render(self.screen, encounter_data)
+            
+            # Show current position (helpful for navigation)
+            pos_font = pygame.font.Font(None, 20)
+            grid_x, grid_y = self.player.get_grid_position()
+            pos_text = f"Position: ({grid_x}, {grid_y}) - {self.world.current_map.name}"
+            pos_surface = pos_font.render(pos_text, True, (255, 255, 255))
+            pos_bg = pygame.Surface((pos_surface.get_width() + 10, pos_surface.get_height() + 4))
+            pos_bg.fill((0, 0, 0))
+            pos_bg.set_alpha(128)
+            self.screen.blit(pos_bg, (5, 5))
+            self.screen.blit(pos_surface, (10, 7))
                 
             # Instructions hint
             font = pygame.font.Font(None, 20)
@@ -475,7 +488,7 @@ class Game:
             # Show tip if in area without encounters
             if self.world.current_map_id not in self.world.encounter_system.encounter_tables:
                 tip_font = pygame.font.Font(None, 28)
-                tip_text = "No wild Pokemon here! Go north to Route 1!"
+                tip_text = "No wild Pokemon here! Go STRAIGHT UP to the TOP of town for Route 1!"
                 text_surface = tip_font.render(tip_text, True, (255, 255, 0))
                 text_rect = text_surface.get_rect(center=(self.SCREEN_WIDTH // 2, 60))
                 
