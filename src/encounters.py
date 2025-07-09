@@ -84,38 +84,22 @@ class EncounterSystem:
             base_encounter_rate=12,  # Slightly higher for more encounters
             encounters=[
                 # Common Pokemon (50%)
-                EncounterData(19, 2, 5, EncounterRarity.COMMON),  # Rattata
-                EncounterData(16, 2, 5, EncounterRarity.COMMON),  # Pidgey
-                EncounterData(21, 2, 4, EncounterRarity.COMMON),  # Spearow
+                EncounterData(1, 2, 5, EncounterRarity.COMMON),   # Bulbasaur
+                EncounterData(4, 2, 5, EncounterRarity.COMMON),   # Charmander
+                EncounterData(7, 2, 5, EncounterRarity.COMMON),   # Squirtle
                 
                 # Uncommon Pokemon (30%)
-                EncounterData(10, 3, 5, EncounterRarity.UNCOMMON),  # Caterpie
-                EncounterData(13, 3, 5, EncounterRarity.UNCOMMON),  # Weedle
-                EncounterData(29, 3, 5, EncounterRarity.UNCOMMON),  # Nidoran♀
-                EncounterData(32, 3, 5, EncounterRarity.UNCOMMON),  # Nidoran♂
+                EncounterData(133, 3, 5, EncounterRarity.UNCOMMON),  # Eevee
+                EncounterData(25, 3, 5, EncounterRarity.UNCOMMON),   # Pikachu
                 
                 # Rare Pokemon (15%)
-                EncounterData(25, 3, 6, EncounterRarity.RARE, shiny_boost=1.5),  # Pikachu (slightly higher shiny chance)
-                EncounterData(56, 4, 6, EncounterRarity.RARE),  # Mankey
-                EncounterData(63, 4, 6, EncounterRarity.RARE),  # Abra
+                EncounterData(94, 4, 6, EncounterRarity.RARE),       # Gengar
+                EncounterData(143, 4, 6, EncounterRarity.RARE),      # Snorlax
+                EncounterData(149, 5, 7, EncounterRarity.RARE),      # Dragonite
                 
                 # Very Rare Pokemon (4%)
-                EncounterData(133, 5, 5, EncounterRarity.VERY_RARE, shiny_boost=2.0),  # Eevee (double shiny chance)
-                EncounterData(132, 5, 5, EncounterRarity.VERY_RARE),  # Ditto
-                
-                # Time-based encounters
-                EncounterData(163, 3, 5, EncounterRarity.UNCOMMON, 
-                            {"time": TimeOfDay.MORNING}),  # Hoothoot (morning)
-                EncounterData(161, 3, 5, EncounterRarity.UNCOMMON,
-                            {"time": TimeOfDay.MORNING}),  # Sentret (morning)
-                EncounterData(41, 3, 5, EncounterRarity.UNCOMMON,
-                            {"time": TimeOfDay.NIGHT}),  # Zubat (night)
-                EncounterData(43, 3, 5, EncounterRarity.UNCOMMON,
-                            {"time": TimeOfDay.NIGHT}),  # Oddish (night)
-                
-                # Special rare spawn (legendary bird hint)
-                EncounterData(21, 8, 10, EncounterRarity.VERY_RARE,
-                            {"time": TimeOfDay.DAY}),  # Higher level Spearow as a hint
+                EncounterData(151, 8, 10, EncounterRarity.VERY_RARE, shiny_boost=3.0),  # Mew (triple shiny chance)
+                EncounterData(6, 10, 15, EncounterRarity.VERY_RARE),  # Charizard
             ]
         )
         
@@ -124,16 +108,17 @@ class EncounterSystem:
             area_name="Viridian Forest",
             base_encounter_rate=15,
             encounters=[
-                # Common Bug Pokemon
-                EncounterData(10, 3, 6, EncounterRarity.COMMON),  # Caterpie
-                EncounterData(11, 3, 5, EncounterRarity.COMMON),  # Metapod
-                EncounterData(13, 3, 6, EncounterRarity.UNCOMMON),  # Weedle
-                EncounterData(14, 3, 5, EncounterRarity.UNCOMMON),  # Kakuna
+                # Common Pokemon
+                EncounterData(1, 3, 6, EncounterRarity.COMMON),   # Bulbasaur
+                EncounterData(25, 3, 6, EncounterRarity.COMMON),  # Pikachu
+                
+                # Uncommon Pokemon
+                EncounterData(4, 4, 7, EncounterRarity.UNCOMMON),   # Charmander
+                EncounterData(7, 4, 7, EncounterRarity.UNCOMMON),   # Squirtle
                 
                 # Rare finds
-                EncounterData(25, 3, 5, EncounterRarity.RARE),  # Pikachu
-                EncounterData(12, 7, 7, EncounterRarity.VERY_RARE),  # Butterfree
-                EncounterData(15, 7, 7, EncounterRarity.VERY_RARE),  # Beedrill
+                EncounterData(133, 5, 8, EncounterRarity.RARE),     # Eevee
+                EncounterData(6, 10, 12, EncounterRarity.VERY_RARE) # Charizard
             ]
         )
         
@@ -143,13 +128,13 @@ class EncounterSystem:
             base_encounter_rate=12,
             encounters=[
                 # Cave Pokemon
-                EncounterData(41, 6, 11, EncounterRarity.COMMON),  # Zubat
-                EncounterData(74, 7, 10, EncounterRarity.COMMON),  # Geodude
-                EncounterData(46, 8, 12, EncounterRarity.UNCOMMON),  # Paras
-                EncounterData(35, 8, 10, EncounterRarity.RARE),  # Clefairy
+                EncounterData(94, 8, 12, EncounterRarity.COMMON),   # Gengar
+                EncounterData(25, 7, 10, EncounterRarity.COMMON),   # Pikachu
+                EncounterData(133, 8, 12, EncounterRarity.UNCOMMON), # Eevee
+                EncounterData(143, 10, 15, EncounterRarity.RARE),   # Snorlax
                 
                 # Very rare
-                EncounterData(36, 12, 12, EncounterRarity.VERY_RARE),  # Clefable
+                EncounterData(151, 12, 15, EncounterRarity.VERY_RARE),  # Mew
             ]
         )
         
@@ -173,17 +158,21 @@ class EncounterSystem:
             base_encounter_rate=15,
             encounters=[
                 # High level Pokemon
-                EncounterData(42, 46, 55, EncounterRarity.COMMON),  # Golbat
-                EncounterData(47, 46, 52, EncounterRarity.COMMON),  # Parasect
-                EncounterData(82, 49, 56, EncounterRarity.UNCOMMON),  # Magneton
-                EncounterData(101, 50, 58, EncounterRarity.UNCOMMON),  # Electrode
-                EncounterData(40, 52, 60, EncounterRarity.RARE),  # Wigglytuff
-                EncounterData(143, 55, 55, EncounterRarity.RARE),  # Snorlax
-                EncounterData(149, 55, 60, EncounterRarity.VERY_RARE),  # Dragonite
+                EncounterData(94, 46, 55, EncounterRarity.COMMON),   # Gengar
+                EncounterData(6, 46, 52, EncounterRarity.COMMON),    # Charizard
+                EncounterData(149, 49, 56, EncounterRarity.UNCOMMON), # Dragonite
+                EncounterData(143, 50, 58, EncounterRarity.UNCOMMON), # Snorlax
+                
+                # Legendary Birds
+                EncounterData(144, 60, 60, EncounterRarity.RARE),     # Articuno
+                EncounterData(145, 60, 60, EncounterRarity.RARE),     # Zapdos
+                EncounterData(146, 60, 60, EncounterRarity.RARE),     # Moltres
                 
                 # Legendary Pokemon (special conditions)
                 EncounterData(150, 70, 70, EncounterRarity.LEGENDARY,
                             {"requirement": "elite_four_defeated"}),  # Mewtwo
+                EncounterData(151, 70, 70, EncounterRarity.LEGENDARY,
+                            {"requirement": "mewtwo_defeated"}),  # Mew
             ]
         )
         

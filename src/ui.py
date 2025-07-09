@@ -8,7 +8,8 @@ from typing import Optional, List, Tuple, Dict, Callable
 from enum import Enum
 from .player import Player
 from .battle import Battle, BattleState, BattleAction
-from .pokemon import Pokemon, StatusCondition, PokemonType
+from .pokemon import Pokemon, StatusCondition, PokemonType, Move
+from .battle_animations import BattleAnimationManager, AnimationType
 
 
 class UIState(Enum):
@@ -69,6 +70,7 @@ class Colors:
     EXP_BLUE = (64, 200, 248)
     TEXT_DARK = (64, 64, 64)
     TEXT_LIGHT = (248, 248, 248)
+    LIGHT_GRAY = (200, 200, 200)
 
 
 class Button:
@@ -452,9 +454,37 @@ class BattleMenu:
             return None
         
         if self.current_menu == "main":
-            # Handle button clicks
+            # Handle keyboard navigation for main menu
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    self.selected_index = (self.selected_index - 2) % 4
+                elif event.key == pygame.K_DOWN:
+                    self.selected_index = (self.selected_index + 2) % 4
+                elif event.key == pygame.K_LEFT:
+                    if self.selected_index % 2 == 1:
+                        self.selected_index -= 1
+                elif event.key == pygame.K_RIGHT:
+                    if self.selected_index % 2 == 0:
+                        self.selected_index += 1
+                elif event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
+                    if self.selected_index == 0:  # FIGHT
+                        self.current_menu = "fight"
+                        self.selected_index = 0
+                    elif self.selected_index == 1:  # BAG
+                        return (BattleAction.BAG, {})
+                    elif self.selected_index == 2:  # POKEMON
+                        return (BattleAction.POKEMON, {})
+                    elif self.selected_index == 3:  # RUN
+                        return (BattleAction.RUN, {})
+                        
+                # Update button hover states
+                for i, button in enumerate(self.main_buttons):
+                    button.hovered = (i == self.selected_index)
+            
+            # Handle button clicks (mouse support)
             for i, button in enumerate(self.main_buttons):
                 if button.handle_event(event):
+                    self.selected_index = i
                     if i == 0:  # FIGHT
                         self.current_menu = "fight"
                         self.selected_index = 0
@@ -524,7 +554,7 @@ class BattleMenu:
                     screen.blit(move_surface, (x, y))
                     
                     # Draw PP
-                    pp_text = f"{move.current_pp}/{move.max_pp}"
+                    pp_text = f"{move.current_pp}/{move.pp}"
                     pp_surface = self.font.render(pp_text, True, Colors.DARK_GRAY)
                     screen.blit(pp_surface, (x + 150, y))
                 
@@ -585,13 +615,18 @@ class UI:
         self.battle_menu = BattleMenu(40, self.screen_height - 320,
                                     self.screen_width - 80, 140)
         
-        # Pokemon info panels
-        self.player_info_panel = PokemonInfoPanel(50, self.screen_height - 480, 280, 90, True)
-        self.opponent_info_panel = PokemonInfoPanel(self.screen_width - 330, 50, 280, 70, False)
+        # Pokemon info panels - moved up to avoid overlap with dialog/menu
+        # Player panel: middle-right area (above battle menu)
+        self.player_info_panel = PokemonInfoPanel(self.screen_width - 350, self.screen_height - 440, 300, 100, True)
+        # Opponent panel: top left area  
+        self.opponent_info_panel = PokemonInfoPanel(50, 50, 300, 80, False)
         
-        # Pokemon sprite positions
-        self.player_sprite_pos = (150, self.screen_height - 350)
-        self.opponent_sprite_pos = (self.screen_width - 250, 150)
+        # Pokemon sprite positions - moved up to be visible above dialog/menu
+        self.player_sprite_pos = (200, self.screen_height - 480)
+        self.opponent_sprite_pos = (self.screen_width - 200, 180)
+        
+        # Battle animation manager
+        self.battle_animation_manager = BattleAnimationManager()
     
     def _init_menu_ui(self):
         """Initialize menu UI components."""
@@ -643,7 +678,7 @@ class UI:
         self.transitioning = True
         self.transition_alpha = 255
     
-    def update(self, dt: float):
+    def update(self, dt: float, game=None):
         """Update UI animations."""
         # Update transition
         if self.transitioning and self.transition_alpha > 0:
@@ -656,6 +691,20 @@ class UI:
             self.battle_dialog.update(dt)
             self.player_info_panel.update(dt)
             self.opponent_info_panel.update(dt)
+            self.battle_animation_manager.update(dt)
+            
+            # Check for battle state changes to trigger animations
+            if hasattr(self, '_last_battle_log_length'):
+                current_log_length = len(game.current_battle.battle_log) if game and game.current_battle else 0
+                if current_log_length > self._last_battle_log_length:
+                    # New battle message - check if it's an attack
+                    if game.current_battle and game.current_battle.last_used_move:
+                        # Trigger animation for the move
+                        target_pos = self.opponent_sprite_pos if game.current_battle.player_pokemon else self.player_sprite_pos
+                        self._trigger_move_animation(game.current_battle.last_used_move, target_pos)
+                self._last_battle_log_length = current_log_length
+            else:
+                self._last_battle_log_length = 0
     
     def handle_event(self, event: pygame.event.Event, game) -> bool:
         """Handle UI events. Returns True if event was handled."""
@@ -733,8 +782,24 @@ class UI:
     
     def draw_battle(self, battle: Battle):
         """Draw battle screen."""
+        # Get screen shake offset
+        shake_offset = self.battle_animation_manager.get_screen_offset()
+        
+        # Apply shake to surface if active
+        if shake_offset != (0, 0):
+            temp_surface = pygame.Surface((self.screen_width, self.screen_height))
+            self._draw_battle_content(temp_surface, battle)
+            self.screen.blit(temp_surface, shake_offset)
+        else:
+            self._draw_battle_content(self.screen, battle)
+        
+        # Draw animations on top (not affected by shake)
+        self.battle_animation_manager.render(self.screen)
+        
+    def _draw_battle_content(self, surface: pygame.Surface, battle: Battle):
+        """Draw battle content to the given surface."""
         # Battle background
-        self._draw_battle_background()
+        self._draw_battle_background_on_surface(surface)
         
         # Update components with battle data
         self.battle_menu.set_battle(battle)
@@ -748,26 +813,39 @@ class UI:
                 self.battle_dialog.set_text(latest_message)
         
         # Draw Pokemon sprites
-        self._draw_pokemon_sprite(battle.player_pokemon, self.player_sprite_pos, True)
-        self._draw_pokemon_sprite(battle.opponent_pokemon, self.opponent_sprite_pos, False)
+        self._draw_pokemon_sprite_on_surface(surface, battle.player_pokemon, self.player_sprite_pos, True)
+        self._draw_pokemon_sprite_on_surface(surface, battle.opponent_pokemon, self.opponent_sprite_pos, False)
         
         # Draw info panels
-        self.player_info_panel.draw(self.screen)
-        self.opponent_info_panel.draw(self.screen)
+        self.player_info_panel.draw(surface)
+        self.opponent_info_panel.draw(surface)
         
         # Draw battle UI
         if battle.state == BattleState.SELECTING_ACTION or battle.state == BattleState.SELECTING_MOVE:
-            self.battle_menu.draw(self.screen)
+            self.battle_menu.draw(surface)
         
         # Draw dialog box
-        self.battle_dialog.draw(self.screen)
+        self.battle_dialog.draw(surface)
+        
+        # Draw battle end message
+        if battle.is_over:
+            self._draw_battle_end_message(surface)
         
         # Draw type effectiveness indicator if in battle
         if battle.state == BattleState.TURN_EXECUTION and battle.last_used_move:
             self._draw_type_effectiveness(battle)
+            
+        # Trigger animations for moves
+        if hasattr(battle, '_move_just_used') and battle._move_just_used:
+            self._trigger_move_animation(battle._move_just_used, battle._move_target_pos)
+            battle._move_just_used = None
     
     def _draw_battle_background(self):
         """Draw battle background."""
+        self._draw_battle_background_on_surface(self.screen)
+        
+    def _draw_battle_background_on_surface(self, surface: pygame.Surface):
+        """Draw battle background on specific surface."""
         # Enhanced sky gradient
         for i in range(self.screen_height // 2):
             ratio = i / (self.screen_height // 2)
@@ -776,47 +854,51 @@ class UI:
             green_value = int(206 + (49 * ratio))
             red_value = int(135 + (120 * ratio))
             color = (red_value, green_value, blue_value)
-            pygame.draw.line(self.screen, color, (0, i), (self.screen_width, i))
+            pygame.draw.line(surface, color, (0, i), (self.screen_width, i))
         
         # Enhanced ground with texture
         ground_color = (144, 208, 144)
         ground_rect = pygame.Rect(0, self.screen_height // 2, self.screen_width, self.screen_height // 2)
-        pygame.draw.rect(self.screen, ground_color, ground_rect)
+        pygame.draw.rect(surface, ground_color, ground_rect)
         
         # Add ground texture
         for i in range(0, self.screen_width, 40):
             for j in range(self.screen_height // 2, self.screen_height, 40):
                 # Add grass patches
                 patch_color = (124, 188, 124)
-                pygame.draw.circle(self.screen, patch_color, (i + 20, j + 20), 15)
+                pygame.draw.circle(surface, patch_color, (i + 20, j + 20), 15)
         
         # Enhanced battle platforms with shadows
-        # Player platform
-        player_platform = pygame.Rect(100, self.screen_height - 250, 200, 80)
+        # Player platform - positioned under player Pokemon (moved up)
+        player_platform = pygame.Rect(100, self.screen_height - 400, 200, 80)
         # Shadow
-        shadow_platform = pygame.Rect(105, self.screen_height - 245, 200, 80)
-        pygame.draw.ellipse(self.screen, (80, 120, 80), shadow_platform)
+        shadow_platform = pygame.Rect(105, self.screen_height - 395, 200, 80)
+        pygame.draw.ellipse(surface, (80, 120, 80), shadow_platform)
         # Main platform
-        pygame.draw.ellipse(self.screen, (120, 176, 120), player_platform)
-        pygame.draw.ellipse(self.screen, (96, 144, 96), player_platform, 3)
+        pygame.draw.ellipse(surface, (120, 176, 120), player_platform)
+        pygame.draw.ellipse(surface, (96, 144, 96), player_platform, 3)
         # Highlight
-        highlight_platform = pygame.Rect(110, self.screen_height - 240, 180, 60)
-        pygame.draw.ellipse(self.screen, (140, 196, 140), highlight_platform, 2)
+        highlight_platform = pygame.Rect(110, self.screen_height - 390, 180, 60)
+        pygame.draw.ellipse(surface, (140, 196, 140), highlight_platform, 2)
         
-        # Opponent platform
-        opponent_platform = pygame.Rect(self.screen_width - 300, 250, 200, 80)
+        # Opponent platform - positioned under opponent Pokemon
+        opponent_platform = pygame.Rect(self.screen_width - 300, 260, 200, 80)
         # Shadow
-        shadow_platform = pygame.Rect(self.screen_width - 295, 255, 200, 80)
-        pygame.draw.ellipse(self.screen, (80, 120, 80), shadow_platform)
+        shadow_platform = pygame.Rect(self.screen_width - 295, 265, 200, 80)
+        pygame.draw.ellipse(surface, (80, 120, 80), shadow_platform)
         # Main platform
-        pygame.draw.ellipse(self.screen, (120, 176, 120), opponent_platform)
-        pygame.draw.ellipse(self.screen, (96, 144, 96), opponent_platform, 3)
+        pygame.draw.ellipse(surface, (120, 176, 120), opponent_platform)
+        pygame.draw.ellipse(surface, (96, 144, 96), opponent_platform, 3)
         # Highlight
-        highlight_platform = pygame.Rect(self.screen_width - 290, 260, 180, 60)
-        pygame.draw.ellipse(self.screen, (140, 196, 140), highlight_platform, 2)
+        highlight_platform = pygame.Rect(self.screen_width - 290, 270, 180, 60)
+        pygame.draw.ellipse(surface, (140, 196, 140), highlight_platform, 2)
     
     def _draw_pokemon_sprite(self, pokemon: Pokemon, position: Tuple[int, int], is_back: bool):
         """Draw Pokemon sprite."""
+        self._draw_pokemon_sprite_on_surface(self.screen, pokemon, position, is_back)
+        
+    def _draw_pokemon_sprite_on_surface(self, surface: pygame.Surface, pokemon: Pokemon, position: Tuple[int, int], is_back: bool):
+        """Draw Pokemon sprite on specific surface."""
         if not pokemon:
             return
         
@@ -827,33 +909,83 @@ class UI:
         sprite = self.load_sprite(sprite_path, (128, 128))
         if sprite:
             sprite_rect = sprite.get_rect(center=position)
-            self.screen.blit(sprite, sprite_rect)
+            surface.blit(sprite, sprite_rect)
         else:
             # Fallback to colored circle with better visuals
             pokemon_color = Colors.TYPE_COLORS.get(pokemon.types[0], Colors.GRAY)
             
             # Draw main body
-            pygame.draw.circle(self.screen, pokemon_color, position, 48)
-            pygame.draw.circle(self.screen, Colors.BLACK, position, 48, 3)
+            pygame.draw.circle(surface, pokemon_color, position, 48)
+            pygame.draw.circle(surface, Colors.BLACK, position, 48, 3)
             
             # Draw inner circle for depth
             inner_color = tuple(min(255, c + 30) for c in pokemon_color)
-            pygame.draw.circle(self.screen, inner_color, position, 32)
+            pygame.draw.circle(surface, inner_color, position, 32)
             
             # Draw Pokemon name
             name_surface = self.font_small.render(pokemon.species_name, True, Colors.WHITE)
             name_rect = name_surface.get_rect(center=position)
-            self.screen.blit(name_surface, name_rect)
+            surface.blit(name_surface, name_rect)
             
             # Draw "Missing Sprite" indicator
             missing_text = self.font_small.render("(No Sprite)", True, Colors.WHITE)
             missing_rect = missing_text.get_rect(center=(position[0], position[1] + 20))
-            self.screen.blit(missing_text, missing_rect)
+            surface.blit(missing_text, missing_rect)
     
     def _draw_type_effectiveness(self, battle: Battle):
         """Draw type effectiveness indicator."""
         # This would show "Super effective!", "Not very effective...", etc.
         pass
+        
+    def _trigger_move_animation(self, move: Move, target_pos: Tuple[int, int]):
+        """Trigger animation based on move type."""
+        if not move or not target_pos:
+            return
+            
+        # Map move types to animations
+        type_animations = {
+            PokemonType.ELECTRIC: AnimationType.ELECTRIC,
+            PokemonType.FIRE: AnimationType.FIRE,
+            PokemonType.WATER: AnimationType.WATER,
+            PokemonType.GRASS: AnimationType.SLASH,
+            PokemonType.FIGHTING: AnimationType.HIT,
+            PokemonType.NORMAL: AnimationType.HIT,
+            PokemonType.GHOST: AnimationType.SLASH,
+            PokemonType.PSYCHIC: AnimationType.FLASH,
+            PokemonType.DARK: AnimationType.SLASH,
+            PokemonType.DRAGON: AnimationType.FIRE,
+            PokemonType.ICE: AnimationType.WATER,
+        }
+        
+        # Get animation type based on move type
+        anim_type = type_animations.get(move.type, AnimationType.HIT)
+        
+        # Add the animation
+        self.battle_animation_manager.add_animation(anim_type, target_pos)
+        
+        # Add screen shake for powerful moves
+        if move.power >= 100:
+            self.battle_animation_manager.add_animation(AnimationType.SHAKE, target_pos)
+            
+    def _draw_battle_end_message(self, surface: pygame.Surface):
+        """Draw message when battle ends."""
+        # Create semi-transparent overlay
+        overlay = pygame.Surface((self.screen_width, 100))
+        overlay.set_alpha(200)
+        overlay.fill((0, 0, 0))
+        surface.blit(overlay, (0, self.screen_height // 2 - 50))
+        
+        # Draw message
+        message = "Battle Complete! Press SPACE or ENTER to continue..."
+        text_surface = self.font_large.render(message, True, Colors.WHITE)
+        text_rect = text_surface.get_rect(center=(self.screen_width // 2, self.screen_height // 2))
+        surface.blit(text_surface, text_rect)
+        
+        # Draw sub-message about auto-continue
+        sub_message = "(or wait 3 seconds)"
+        sub_surface = self.font_medium.render(sub_message, True, Colors.LIGHT_GRAY)
+        sub_rect = sub_surface.get_rect(center=(self.screen_width // 2, self.screen_height // 2 + 40))
+        surface.blit(sub_surface, sub_rect)
     
     def draw_world_hud(self, player: Player):
         """Draw HUD for world exploration."""

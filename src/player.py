@@ -12,8 +12,8 @@ class Player:
     """Represents the player character in the Pokemon game."""
     
     TILE_SIZE = 32
-    MOVE_SPEED = 4  # Tiles per second
-    RUN_SPEED = 8   # Tiles per second when running
+    MOVE_SPEED = 8   # Tiles per second (increased from 4)
+    RUN_SPEED = 12  # Tiles per second when running (increased from 8)
     
     def __init__(self, name: str, x: int = 0, y: int = 0):
         self.name = name
@@ -149,9 +149,6 @@ class Player:
         elif direction == "right":
             dx = 1
         
-        # Update facing direction regardless of movement
-        self.facing_direction = direction
-        
         # Check if target position is valid (collision detection done by game/world)
         new_grid_x = self.grid_x + dx
         new_grid_y = self.grid_y + dy
@@ -186,7 +183,7 @@ class Player:
                 self.is_moving = False
                 self.move_progress = 0.0
                 # Small cooldown to prevent movement feeling too fast
-                self.move_cooldown = 0.05
+                self.move_cooldown = 0.02
             else:
                 # Interpolate position
                 start_x = self.grid_x * self.TILE_SIZE

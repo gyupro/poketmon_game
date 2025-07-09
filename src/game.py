@@ -74,6 +74,10 @@ class Game:
         
         # Current NPC for interactions
         self.current_npc = None
+        
+        # Battle end timer
+        self.battle_end_timer = 0.0
+        self.battle_end_delay = 3.0  # 3 seconds delay after battle ends
     
     def load_map_data(self):
         """Load or generate map data."""
@@ -232,7 +236,7 @@ class Game:
         elif self.game_state == GameState.BATTLE:
             # Battle input handled by UI battle menu
             if self.current_battle and self.current_battle.is_over:
-                if key == pygame.K_SPACE:
+                if key == pygame.K_SPACE or key == pygame.K_RETURN:
                     self.end_battle()
         
         elif self.game_state == GameState.POKEMON_MENU:
@@ -289,7 +293,7 @@ class Game:
     def update(self, dt):
         """Update game logic."""
         # Update UI animations
-        self.ui.update(dt)
+        self.ui.update(dt, self)
         
         # Update based on game state
         if self.game_state == GameState.WORLD:
@@ -351,6 +355,9 @@ class Game:
         if not self.player or not self.world:
             return
         
+        # Always update facing direction, even if we can't move
+        self.player.facing_direction = direction
+        
         # Calculate target position
         dx, dy = 0, 0
         if direction == "up":
@@ -371,8 +378,12 @@ class Game:
     
     def update_battle(self, dt):
         """Update battle state."""
-        # Battle updates are handled through events and UI
-        pass
+        # Check if battle has ended
+        if self.current_battle and self.current_battle.is_over:
+            self.battle_end_timer += dt
+            # Auto-end battle after delay
+            if self.battle_end_timer >= self.battle_end_delay:
+                self.end_battle()
     
     def trigger_wild_encounter(self):
         """Start a wild Pokemon encounter."""
@@ -421,6 +432,7 @@ class Game:
         self.current_battle = None
         self.game_state = GameState.WORLD
         self.ui.state = UIState.GAME_WORLD
+        self.battle_end_timer = 0.0  # Reset timer
     
     def render(self):
         """Render the game."""

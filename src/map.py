@@ -434,7 +434,7 @@ def create_sample_maps() -> Dict[str, Map]:
     # Add warps
     # Exit to Route 1 (multiple tiles for wider exit)
     for x in range(18, 23):
-        town.add_warp(Warp(x, 0, "route_1", x, 39))
+        town.add_warp(Warp(x, 0, "route_1", x, 38))
     
     # NPCs are handled by World class, not added here
     

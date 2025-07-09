@@ -135,8 +135,8 @@ class World:
             is_trainer=True,
             trainer_data={
                 "team": [
-                    {"species": "Caterpie", "level": 4},
-                    {"species": "Weedle", "level": 4}
+                    {"species": "Pikachu", "level": 4},
+                    {"species": "Bulbasaur", "level": 4}
                 ],
                 "reward_money": 50
             }
