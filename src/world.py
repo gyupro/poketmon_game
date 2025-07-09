@@ -43,8 +43,8 @@ class World:
         # Camera settings
         self.camera_x = 0
         self.camera_y = 0
-        self.screen_width = 800
-        self.screen_height = 600
+        self.screen_width = 1280
+        self.screen_height = 800
         
         # NPCs for each map
         self.npcs: Dict[str, List[NPC]] = {

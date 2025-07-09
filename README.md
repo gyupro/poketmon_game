@@ -1,40 +1,40 @@
-# Pokemon Game
+# 🎮 Pokemon Game
 
-A feature-rich Pokemon-style RPG game built with Python and Pygame, featuring turn-based battles, world exploration, and all the classic Pokemon mechanics you love!
+A feature-rich Pokemon-style RPG game built with uv run and Pygame, featuring turn-based battles, world exploration, and all the classic Pokemon mechanics you love!
 
-![Pokemon Game Banner](screenshots/banner.png)
+## 🎯 Overview
 
-## Overview
+This Pokemon Game is a comprehensive recreation of the classic Pokemon gaming experience. Explore a vibrant tile-based world, catch and train Pokemon, battle other trainers, and become the Pokemon Champion!
 
-This Pokemon Game is a comprehensive recreation of the classic Pokemon gaming experience. Explore a vibrant world, catch and train Pokemon, battle other trainers, and become the Pokemon Champion! The game features authentic Pokemon mechanics including type effectiveness, status conditions, experience systems, and more.
-
-## Features
+## ✨ Features
 
 ### Core Gameplay
 - **Starter Pokemon Selection** - Choose between Bulbasaur, Charmander, or Squirtle
-- **Turn-Based Battle System** - Authentic Pokemon battle mechanics with:
+- **Turn-Based Battle System** with:
   - Type effectiveness system (18 types)
   - Physical/Special move split
   - Status conditions (Paralysis, Burn, Poison, Sleep, Freeze)
-  - Stat modifications (Attack, Defense, Speed, etc.)
+  - Stat modifications
   - Critical hits and accuracy/evasion
   - Experience and leveling system
 
 ### World Exploration
-- **Grid-Based Movement** - Classic Pokemon-style movement
+- **Grid-Based Movement** - Classic Pokemon-style with smooth animations
 - **Multiple Connected Maps** - Seamless transitions between areas
 - **Different Terrain Types**:
-  - Normal ground
-  - Tall grass (wild Pokemon encounters)
+  - Normal ground and paths
+  - Tall grass (wild Pokemon encounters - 10% chance per step)
   - Buildings with interiors
+  - Trees and obstacles
   - Water (Surf required - future feature)
 
-### Pokemon Features
-- **Comprehensive Pokemon System**:
+### Pokemon System
+- **Comprehensive Pokemon Mechanics**:
   - Individual stats (HP, Attack, Defense, Sp. Attack, Sp. Defense, Speed)
   - Natures affecting stat growth
   - Abilities with in-battle effects
   - Move learning and PP system
+  - Shiny Pokemon (0.1% chance)
   - Evolution (coming soon)
 
 ### NPCs and Interactions
@@ -52,78 +52,37 @@ This Pokemon Game is a comprehensive recreation of the classic Pokemon gaming ex
   - Battle items (X Attack, X Defense)
   - Key items for progression
 
-### Quality of Life Features
-- **Pokemon Center Healing** - Full HP/PP restoration and status condition removal
-- **Auto-Save** (coming soon)
-- **Settings Menu** (coming soon)
-- **Pokemon PC Storage** (coming soon)
-
-## Installation
-
-### Prerequisites
-- Python 3.8 or higher
-- pip (Python package installer)
 
 ### Setup Instructions
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd pokemon_game
-   ```
-
-2. **Create a virtual environment** (recommended)
-   ```bash
-   python -m venv venv
-   
-   # On Windows
-   venv\Scripts\activate
-   
-   # On macOS/Linux
-   source venv/bin/activate
-   ```
 
 3. **Install dependencies**
    ```bash
-   pip install -r requirements.txt
+   uv pip install -r requirements.txt
    ```
+   Dependencies:
+   - pygame==2.5.2
+   - requests==2.31.0
+   - pillow==10.2.0
 
-4. **Download Pokemon sprites** (optional)
+4. **Run the game**
    ```bash
-   python download_popular_sprites.py
+   # Option 2: Full version
+   uv run main.py
+   
+ 
    ```
 
-5. **Run the game**
-   ```bash
-   python main.py
-   ```
-
-## How to Play
+## 🎮 How to Play
 
 ### Starting the Game
-1. Run `python main.py` to start the game
-2. Select "New Game" from the main menu
-3. Choose your starter Pokemon (Bulbasaur, Charmander, or Squirtle)
-4. Begin your adventure in Pallet Town!
+1. Run the game using one of the methods above
+2. Choose your starter Pokemon
+3. Begin your adventure in Pallet Town!
 
-### Game Objectives
-- Build a strong team of Pokemon
-- Defeat all 8 Gym Leaders (coming soon)
-- Challenge the Elite Four (coming soon)
-- Become the Pokemon Champion!
-- Complete the Pokedex (coming soon)
+### Controls
 
-### Tips for New Players
-- Save your game frequently at Pokemon Centers
-- Type effectiveness is crucial in battles - learn the type chart!
-- Keep a balanced team with different Pokemon types
-- Stock up on Potions and Poke Balls before leaving town
-- Talk to all NPCs - they often give helpful items or information
-- Train your Pokemon in tall grass before challenging trainers
-
-## Controls
-
-### World Exploration
+#### World Exploration
 | Key | Action |
 |-----|--------|
 | Arrow Keys / WASD | Move character |
@@ -133,170 +92,130 @@ This Pokemon Game is a comprehensive recreation of the classic Pokemon gaming ex
 | P | Open Pokemon Menu |
 | ESC | Pause Menu |
 
-### Battle Controls
+#### Battle Controls
 | Key | Action |
 |-----|--------|
-| 1-4 | Select move (or click) |
+| 1-4 / A | Attack/Select move |
+| C | Catch Pokemon (uses Poke Ball) |
+| R | Run from wild Pokemon |
 | Arrow Keys | Navigate battle menu |
 | Enter | Confirm selection |
 | B | Back/Cancel |
-| R | Run from wild Pokemon |
 
-### Menu Navigation
-| Key | Action |
-|-----|--------|
-| Arrow Keys | Navigate options |
-| Enter | Select option |
-| ESC | Back/Close menu |
+### Game Objectives
+- Build a strong team of Pokemon
+- Explore all areas and talk to NPCs
+- Catch different types of Pokemon
+- Train your team in wild encounters
+- Heal at Pokemon Centers
+- Become the ultimate Pokemon trainer!
 
-## Game Mechanics
+### Tips for New Players
+- Type effectiveness is crucial - learn the type chart!
+- Lower a Pokemon's HP before trying to catch it
+- Keep a balanced team with different types
+- Talk to all NPCs for items and information
+- Save frequently (when implemented)
+- Explore tall grass for wild Pokemon
 
-### Type Effectiveness
-The game features the full Pokemon type chart with 18 types. Key interactions:
-- **Super Effective** (2x damage): Fire → Grass, Water → Fire, etc.
-- **Not Very Effective** (0.5x damage): Fire → Water, Grass → Fire, etc.
-- **No Effect** (0x damage): Normal → Ghost, Electric → Ground, etc.
+## 🗺️ Map System
 
-### Status Conditions
-- **Burn**: Damage each turn, halves physical attack
-- **Poison**: Damage each turn
-- **Paralysis**: 25% chance to be unable to move, speed reduced
-- **Sleep**: Cannot move for 1-3 turns
-- **Freeze**: Cannot move until thawed
+### Tile Types
+- `T` = Trees (solid obstacles)
+- `.` = Path/Ground (walkable)
+- `#` = Tall Grass (wild Pokemon encounters)
+- `~` = Water (requires Surf)
+- `B` = Buildings
+- `D` = Doors (entry points)
 
-### Experience and Leveling
-- Gain EXP by defeating Pokemon
-- Level up to increase stats
-- Learn new moves at certain levels
-- Evolve at specific levels (coming soon)
+### Sample Maps
+1. **Pallet Town** - Starting town with Pokemon Center and Professor Oak
+2. **Route 1** - Wild Pokemon area connecting to other towns
+3. **Pokemon Center** - Heal your Pokemon team
 
-## Project Structure
+### Map Features
+- Grid-based movement (32x32 pixel tiles)
+- Smooth movement animations
+- Collision detection
+- Warp points for transitions
+- Interactive objects (signs, NPCs)
+- Wild Pokemon encounter areas
+
+## 📁 Project Structure
 
 ```
 pokemon_game/
-├── main.py                 # Game entry point
-├── demo_full_game.py      # Comprehensive demo script
-├── requirements.txt        # Python dependencies
-├── README.md              # This file
-├── src/                   # Source code
-│   ├── __init__.py
-│   ├── game.py           # Main game loop and state management
-│   ├── pokemon.py        # Pokemon classes and mechanics
-│   ├── battle.py         # Battle system implementation
-│   ├── player.py         # Player character management
-│   ├── ui.py             # User interface components
-│   ├── world.py          # World and NPC management
-│   ├── map.py            # Map system and tiles
-│   ├── encounters.py     # Wild Pokemon encounter system
-│   └── items.py          # Item definitions and effects
-├── assets/               # Game assets
-│   ├── sprites/          # Pokemon sprite images
-│   ├── maps/             # Map data files
-│   └── sounds/           # Sound effects and music
-└── utils/                # Utility modules
-    ├── __init__.py
-    └── downloader.py     # Sprite downloader utility
+├── main.py              # Full game entry point
+├── simple_game.py       # Simplified standalone version
+├── run_game.py         # Game launcher
+├── requirements.txt     # Dependencies
+├── README.md           # This file
+├── src/                # Source code
+│   ├── game.py        # Main game loop
+│   ├── pokemon.py     # Pokemon classes
+│   ├── battle.py      # Battle system
+│   ├── player.py      # Player management
+│   ├── ui.py          # User interface
+│   ├── world.py       # World management
+│   ├── map.py         # Map system
+│   ├── encounters.py  # Wild encounters
+│   └── items.py       # Item definitions
+├── assets/            # Game assets
+│   ├── sprites/       # Pokemon sprites
+│   ├── maps/          # Map data
+│   └── sounds/        # Audio files
+└── utils/             # Utilities
+    └── downloader.py  # Sprite downloader
 ```
 
-## Running the Demo
+## 🔧 Technical Details
 
-For a guided tour of all game features, run the comprehensive demo:
+### Game Versions
+1. **Full Version** (`main.py`) - Complete Pokemon experience with all features
+2. **Simple Version** (`simple_game.py`) - Lightweight, self-contained version
 
-```bash
-python demo_full_game.py
-```
+### Known Issues & Fixes
+- **Audio on WSL**: Audio is disabled in WSL environments to prevent crashes
+- **Missing Sprites**: Game displays colored shapes as fallback graphics
+- **Performance**: Lower FPS in settings if experiencing lag
 
-The demo will walk you through:
-1. Starter selection process
-2. Basic controls tutorial
-3. World exploration basics
-4. NPC interaction examples
-5. Wild Pokemon encounters
-6. Battle system demonstration
-7. Item usage
-8. Pokemon Center healing
+## 🚀 Future Features
 
-## Development
-
-### Adding New Pokemon
-1. Define the Pokemon in `src/pokemon.py`
-2. Add sprite images to `assets/sprites/`
-3. Configure encounter data in `src/encounters.py`
-
-### Creating New Maps
-1. Create map data in `assets/maps/`
-2. Define warps and connections
-3. Add NPCs in `src/world.py`
-
-### Implementing New Features
-The codebase is modular and extensible. Key extension points:
-- `src/pokemon.py` - Add new moves, abilities, or Pokemon
-- `src/items.py` - Create new item types
-- `src/battle.py` - Extend battle mechanics
-- `src/ui.py` - Customize UI components
-
-## Troubleshooting
-
-### Common Issues
-
-**Game won't start**
-- Ensure Python 3.8+ is installed
-- Check all dependencies are installed: `pip install -r requirements.txt`
-- Verify Pygame is properly installed
-
-**No sprites showing**
-- Run `python download_popular_sprites.py` to download sprites
-- Check `assets/sprites/` directory exists
-
-**Performance issues**
-- Lower the FPS in `src/game.py` (default is 60)
-- Close other applications
-- Update graphics drivers
-
-## Future Features
-
-- [ ] Pokemon catching mechanics with different Poke Ball types
+- [ ] Pokemon catching with different ball types
 - [ ] Full evolution system
-- [ ] Pokemon breeding
-- [ ] Day/night cycle
-- [ ] Weather effects affecting battles
+- [ ] Save/Load functionality
 - [ ] Gym Leaders and badges
-- [ ] Elite Four and Champion
-- [ ] Post-game content
+- [ ] Pokemon PC storage system
 - [ ] Trading system
-- [ ] Online battles
-- [ ] Full Pokedex with detailed entries
-- [ ] Berry growing system
-- [ ] Pokemon abilities in battle
-- [ ] Mega Evolution
-- [ ] Save/Load system
+- [ ] Day/night cycle
+- [ ] Weather effects
 - [ ] Sound effects and music
 - [ ] Animated sprites
-- [ ] Cutscenes and story events
+- [ ] Berry growing
+- [ ] Breeding system
+- [ ] Online features
 
-## Contributing
+## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit pull requests or open issues for bugs and feature requests.
+Contributions are welcome! Please:
+1. Follow existing code style
+2. Test changes thoroughly
+3. Update documentation
+4. Submit clear pull requests
 
-### Guidelines
-1. Follow the existing code style
-2. Test your changes thoroughly
-3. Update documentation as needed
-4. Submit clear pull request descriptions
+## ⚠️ Notes
 
-## Credits
+- This is a fan-made game for educational purposes
+- Pokemon is a trademark of Nintendo/Game Freak
+- Not affiliated with or endorsed by Nintendo
+- Sprites from PokeAPI (when downloaded)
 
-- Game developed using Python and Pygame
-- Inspired by the Pokemon game series by Game Freak and Nintendo
-- Pokemon sprites from PokeAPI
-- Special thanks to the Python and Pygame communities
+## 📝 License
 
-## License
-
-This is a fan-made game for educational purposes. Pokemon is a trademark of Nintendo/Game Freak. This project is not affiliated with or endorsed by Nintendo, Game Freak, or The Pokemon Company.
+Educational project - see repository for license details.
 
 ---
 
-**Enjoy your Pokemon adventure!** 🎮
+**Enjoy your Pokemon adventure!** 🎮✨
 
-For questions or support, please open an issue on the repository.
+For support, please open an issue on the repository.

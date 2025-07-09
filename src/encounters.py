@@ -78,32 +78,44 @@ class EncounterSystem:
         """Create all encounter tables for different areas."""
         tables = {}
         
-        # Route 1 - Early game route
+        # Route 1 - Early game route with diverse encounters
         tables["route_1"] = EncounterTable(
             area_name="Route 1",
-            base_encounter_rate=10,
+            base_encounter_rate=12,  # Slightly higher for more encounters
             encounters=[
                 # Common Pokemon (50%)
-                EncounterData(19, 2, 4, EncounterRarity.COMMON),  # Rattata
+                EncounterData(19, 2, 5, EncounterRarity.COMMON),  # Rattata
                 EncounterData(16, 2, 5, EncounterRarity.COMMON),  # Pidgey
+                EncounterData(21, 2, 4, EncounterRarity.COMMON),  # Spearow
                 
                 # Uncommon Pokemon (30%)
                 EncounterData(10, 3, 5, EncounterRarity.UNCOMMON),  # Caterpie
                 EncounterData(13, 3, 5, EncounterRarity.UNCOMMON),  # Weedle
+                EncounterData(29, 3, 5, EncounterRarity.UNCOMMON),  # Nidoran♀
+                EncounterData(32, 3, 5, EncounterRarity.UNCOMMON),  # Nidoran♂
                 
                 # Rare Pokemon (15%)
-                EncounterData(25, 3, 5, EncounterRarity.RARE),  # Pikachu
+                EncounterData(25, 3, 6, EncounterRarity.RARE, shiny_boost=1.5),  # Pikachu (slightly higher shiny chance)
+                EncounterData(56, 4, 6, EncounterRarity.RARE),  # Mankey
+                EncounterData(63, 4, 6, EncounterRarity.RARE),  # Abra
                 
                 # Very Rare Pokemon (4%)
-                EncounterData(133, 5, 5, EncounterRarity.VERY_RARE),  # Eevee
+                EncounterData(133, 5, 5, EncounterRarity.VERY_RARE, shiny_boost=2.0),  # Eevee (double shiny chance)
+                EncounterData(132, 5, 5, EncounterRarity.VERY_RARE),  # Ditto
                 
-                # Morning only
+                # Time-based encounters
                 EncounterData(163, 3, 5, EncounterRarity.UNCOMMON, 
-                            {"time": TimeOfDay.MORNING}),  # Hoothoot
-                
-                # Night only
+                            {"time": TimeOfDay.MORNING}),  # Hoothoot (morning)
+                EncounterData(161, 3, 5, EncounterRarity.UNCOMMON,
+                            {"time": TimeOfDay.MORNING}),  # Sentret (morning)
                 EncounterData(41, 3, 5, EncounterRarity.UNCOMMON,
-                            {"time": TimeOfDay.NIGHT}),  # Zubat
+                            {"time": TimeOfDay.NIGHT}),  # Zubat (night)
+                EncounterData(43, 3, 5, EncounterRarity.UNCOMMON,
+                            {"time": TimeOfDay.NIGHT}),  # Oddish (night)
+                
+                # Special rare spawn (legendary bird hint)
+                EncounterData(21, 8, 10, EncounterRarity.VERY_RARE,
+                            {"time": TimeOfDay.DAY}),  # Higher level Spearow as a hint
             ]
         )
         
@@ -290,9 +302,28 @@ class EncounterSystem:
         
         table = self.encounter_tables[area]
         
-        # Increase encounter rate based on consecutive steps in grass
-        modified_rate = table.base_encounter_rate + (steps_in_grass - 1) * 2
-        modified_rate = min(modified_rate, 40)  # Cap at 40%
+        # Dynamic encounter rate calculation
+        base_rate = table.base_encounter_rate
+        
+        # Increase rate based on consecutive steps (more realistic curve)
+        step_bonus = min(steps_in_grass * 1.5, 15)  # Max +15% from steps
+        
+        # Time of day modifier
+        time_modifier = 1.0
+        current_time = self.get_time_of_day()
+        if current_time == TimeOfDay.MORNING:
+            time_modifier = 1.1  # 10% more encounters in morning
+        elif current_time == TimeOfDay.NIGHT:
+            time_modifier = 1.2  # 20% more encounters at night
+        
+        # Chain bonus - slightly higher encounter rate when chaining
+        chain_bonus = 0
+        if self.chain_count > 5:
+            chain_bonus = min(self.chain_count * 0.5, 10)  # Max +10% from chain
+        
+        # Calculate final rate
+        modified_rate = (base_rate + step_bonus + chain_bonus) * time_modifier
+        modified_rate = min(modified_rate, 45)  # Cap at 45%
         
         return random.randint(1, 100) <= modified_rate
     

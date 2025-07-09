@@ -5,6 +5,7 @@ Map System - Tile-based maps with collision detection and transitions
 import pygame
 import json
 import os
+import random
 from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass
 from enum import IntEnum
@@ -310,104 +311,214 @@ def create_sample_maps() -> Dict[str, Map]:
     """Create sample maps for the game."""
     maps = {}
     
-    # Starting Town
-    town = Map("pallet_town", 20, 20, "Pallet Town")
+    # Starting Town - Now larger and more detailed
+    town = Map("pallet_town", 40, 30, "Pallet Town")
     
-    # Create town layout
-    for y in range(20):
-        for x in range(20):
+    # Create town layout with improved design
+    for y in range(30):
+        for x in range(40):
             # Default to grass
             town.set_tile(x, y, TileType.GRASS)
             
-            # Add paths
-            if 8 <= x <= 11 or 8 <= y <= 11:
+            # Add main paths (wider and more organic)
+            # Horizontal main road
+            if 12 <= y <= 17 and 5 <= x <= 34:
                 town.set_tile(x, y, TileType.PATH)
+            # Vertical paths connecting buildings
+            if 15 <= x <= 17 or 22 <= x <= 24:
+                if 5 <= y <= 25:
+                    town.set_tile(x, y, TileType.PATH)
             
-            # Add trees around edges
-            if x == 0 or x == 19 or y == 0 or y == 19:
+            # Add trees for natural borders (denser forest feel)
+            if x <= 2 or x >= 37 or y <= 2 or y >= 27:
                 town.set_tile(x, y, TileType.TREE)
+            # Additional tree clusters
+            if (3 <= x <= 6 and 3 <= y <= 8) or (33 <= x <= 36 and 20 <= y <= 25):
+                if random.random() > 0.3:  # Random tree placement
+                    town.set_tile(x, y, TileType.TREE)
     
-    # Add Pokemon Center
-    for y in range(4, 8):
-        for x in range(3, 8):
-            if y == 4 or y == 7 or x == 3 or x == 7:
+    # Add Pokemon Center (larger building)
+    for y in range(6, 12):
+        for x in range(8, 15):
+            if y == 6 or y == 11 or x == 8 or x == 14:
                 town.set_tile(x, y, TileType.BUILDING_WALL)
             else:
                 town.set_tile(x, y, TileType.BUILDING_FLOOR)
-    town.set_tile(5, 7, TileType.DOOR)
+    town.set_tile(11, 11, TileType.DOOR)
+    # Add roof decoration
+    for x in range(9, 14):
+        town.set_tile(x, 5, TileType.ROCK)  # Using rock as roof tiles
     
-    # Add Player's House
-    for y in range(12, 16):
-        for x in range(4, 9):
-            if y == 12 or y == 15 or x == 4 or x == 8:
+    # Add Player's House (cozy home with garden)
+    for y in range(20, 25):
+        for x in range(10, 16):
+            if y == 20 or y == 24 or x == 10 or x == 15:
                 town.set_tile(x, y, TileType.BUILDING_WALL)
             else:
                 town.set_tile(x, y, TileType.BUILDING_FLOOR)
-    town.set_tile(6, 15, TileType.DOOR)
+    town.set_tile(12, 24, TileType.DOOR)
+    # Add small garden
+    for y in range(25, 27):
+        for x in range(11, 15):
+            if random.random() > 0.4:
+                town.set_tile(x, y, TileType.FLOWER)
     
-    # Add Rival's House
-    for y in range(12, 16):
-        for x in range(12, 17):
-            if y == 12 or y == 15 or x == 12 or x == 16:
+    # Add Rival's House (matching player's house)
+    for y in range(20, 25):
+        for x in range(24, 30):
+            if y == 20 or y == 24 or x == 24 or x == 29:
                 town.set_tile(x, y, TileType.BUILDING_WALL)
             else:
                 town.set_tile(x, y, TileType.BUILDING_FLOOR)
-    town.set_tile(14, 15, TileType.DOOR)
+    town.set_tile(26, 24, TileType.DOOR)
     
-    # Add some flowers and rocks for decoration
-    town.set_tile(2, 10, TileType.FLOWER)
-    town.set_tile(3, 11, TileType.FLOWER)
-    town.set_tile(15, 8, TileType.ROCK)
+    # Add Professor's Lab (important building)
+    for y in range(7, 14):
+        for x in range(18, 28):
+            if y == 7 or y == 13 or x == 18 or x == 27:
+                town.set_tile(x, y, TileType.BUILDING_WALL)
+            else:
+                town.set_tile(x, y, TileType.BUILDING_FLOOR)
+    town.set_tile(22, 13, TileType.DOOR)
+    town.set_tile(23, 13, TileType.DOOR)  # Double door for lab
     
-    # Add sign
-    town.set_tile(10, 14, TileType.SIGN)
-    town.add_object(MapObject(10, 14, "sign", {
+    # Add decorative elements throughout town
+    # Fountain in town center
+    for y in range(14, 17):
+        for x in range(19, 22):
+            if (x == 19 or x == 21) and (y == 14 or y == 16):
+                town.set_tile(x, y, TileType.ROCK)
+            elif x == 20 and y == 15:
+                town.set_tile(x, y, TileType.WATER)
+    
+    # Flower beds and decorations
+    flower_spots = [(6, 18), (7, 19), (31, 15), (32, 16), (8, 23), (30, 8)]
+    for x, y in flower_spots:
+        town.set_tile(x, y, TileType.FLOWER)
+    
+    # Benches (using rocks as placeholder)
+    bench_spots = [(13, 18), (26, 18), (16, 9), (23, 9)]
+    for x, y in bench_spots:
+        town.set_tile(x, y, TileType.ROCK)
+    
+    # Add signs
+    town.set_tile(16, 19, TileType.SIGN)
+    town.add_object(MapObject(16, 19, "sign", {
         "text": "Welcome to Pallet Town!\nA quiet town of new beginnings."
     }))
     
-    # Add warp to route
-    town.add_warp(Warp(10, 0, "route_1", 10, 19))
-    
-    # Add NPC
-    town.add_object(MapObject(9, 9, "npc", {
-        "name": "Professor Oak",
-        "dialogue": ["Hello there! Welcome to the world of Pokemon!",
-                    "My name is Oak. People call me the Pokemon Professor!"]
+    town.set_tile(22, 6, TileType.SIGN)
+    town.add_object(MapObject(22, 6, "sign", {
+        "text": "Professor Oak's Pokemon Lab\nCutting-edge Pokemon research!"
     }))
+    
+    town.set_tile(11, 5, TileType.SIGN)
+    town.add_object(MapObject(11, 5, "sign", {
+        "text": "Pokemon Center\nHeal your Pokemon for free!"
+    }))
+    
+    # Add warps
+    # Exit to Route 1 (multiple tiles for wider exit)
+    for x in range(18, 23):
+        town.add_warp(Warp(x, 0, "route_1", x, 39))
+    
+    # NPCs are handled by World class, not added here
     
     maps["pallet_town"] = town
     
-    # Route 1
-    route = Map("route_1", 20, 20, "Route 1")
+    # Route 1 - Much larger with varied terrain
+    route = Map("route_1", 40, 40, "Route 1")
     
-    # Create route layout
-    for y in range(20):
-        for x in range(20):
+    # Create route layout with natural winding path
+    for y in range(40):
+        for x in range(40):
             # Default to grass
             route.set_tile(x, y, TileType.GRASS)
             
-            # Add path through middle
-            if 8 <= x <= 11:
-                route.set_tile(x, y, TileType.PATH)
+            # Create a winding path
+            path_width = 4
+            # Main path with curves
+            if y < 10:
+                if 18 <= x <= 21:  # Straight section
+                    route.set_tile(x, y, TileType.PATH)
+            elif 10 <= y < 15:
+                if 18 - (y - 10) <= x <= 21 - (y - 10):  # Curve left
+                    route.set_tile(x, y, TileType.PATH)
+            elif 15 <= y < 25:
+                if 13 <= x <= 16:  # Left path
+                    route.set_tile(x, y, TileType.PATH)
+            elif 25 <= y < 30:
+                if 13 + (y - 25) <= x <= 16 + (y - 25):  # Curve right
+                    route.set_tile(x, y, TileType.PATH)
+            else:
+                if 18 <= x <= 21:  # Back to center
+                    route.set_tile(x, y, TileType.PATH)
             
-            # Add tall grass patches for wild encounters
-            if ((4 <= x <= 7 or 12 <= x <= 15) and 
-                (4 <= y <= 8 or 12 <= y <= 16)):
-                route.set_tile(x, y, TileType.TALL_GRASS)
+            # Add extensive tall grass areas for encounters
+            grass_areas = [
+                (5, 5, 12, 15),    # Left upper area
+                (25, 8, 35, 18),   # Right upper area
+                (3, 20, 10, 30),   # Left lower area
+                (28, 25, 37, 35),  # Right lower area
+                (8, 32, 15, 38),   # Bottom left patch
+                (23, 30, 30, 37),  # Bottom right patch
+            ]
             
-            # Add trees on sides
-            if x <= 1 or x >= 18:
+            for gx1, gy1, gx2, gy2 in grass_areas:
+                if gx1 <= x <= gx2 and gy1 <= y <= gy2:
+                    # Create patches with some normal grass mixed in
+                    if random.random() > 0.2:
+                        route.set_tile(x, y, TileType.TALL_GRASS)
+            
+            # Add tree borders and clusters
+            if x <= 1 or x >= 38 or y <= 1 or y >= 38:
                 route.set_tile(x, y, TileType.TREE)
+            
+            # Tree clusters for more natural look
+            tree_clusters = [
+                (22, 12, 5),  # (center_x, center_y, radius)
+                (10, 18, 4),
+                (30, 22, 4),
+                (15, 35, 3),
+            ]
+            
+            for cx, cy, radius in tree_clusters:
+                if ((x - cx) ** 2 + (y - cy) ** 2) <= radius ** 2:
+                    if random.random() > 0.3:
+                        route.set_tile(x, y, TileType.TREE)
     
-    # Add some rocks and ledges
-    route.set_tile(6, 10, TileType.ROCK)
-    route.set_tile(14, 7, TileType.ROCK)
-    route.set_tile(7, 15, TileType.LEDGE_DOWN)
-    route.set_tile(8, 15, TileType.LEDGE_DOWN)
+    # Add terrain features
+    # Rocks scattered around
+    rock_positions = [(6, 10), (14, 7), (25, 15), (32, 28), (8, 25), (20, 5)]
+    for x, y in rock_positions:
+        route.set_tile(x, y, TileType.ROCK)
+    
+    # Ledges for one-way movement
+    for x in range(10, 15):
+        route.set_tile(x, 18, TileType.LEDGE_DOWN)
+    for x in range(24, 28):
+        route.set_tile(x, 23, TileType.LEDGE_DOWN)
+    
+    # Small pond
+    for y in range(12, 15):
+        for x in range(31, 34):
+            route.set_tile(x, y, TileType.WATER)
+    
+    # Flower patches
+    flower_areas = [(7, 8), (12, 22), (26, 10), (33, 32)]
+    for fx, fy in flower_areas:
+        for dx in range(-1, 2):
+            for dy in range(-1, 2):
+                if random.random() > 0.5:
+                    route.set_tile(fx + dx, fy + dy, TileType.FLOWER)
     
     # Add warps
-    route.add_warp(Warp(10, 19, "pallet_town", 10, 1))
-    route.add_warp(Warp(10, 0, "viridian_city", 10, 19))
+    # Multiple tiles for entrance from Pallet Town
+    for x in range(18, 23):
+        route.add_warp(Warp(x, 39, "pallet_town", x, 1))
+    # Exit to Viridian City
+    for x in range(18, 23):
+        route.add_warp(Warp(x, 0, "viridian_city", x, 39))
     
     # Set wild Pokemon data
     route.wild_pokemon_data = {

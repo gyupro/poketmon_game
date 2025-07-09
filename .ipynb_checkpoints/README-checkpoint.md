@@ -1,98 +1,226 @@
-# Pokemon Game
+# 🎮 Pokemon Game
 
-A simple Pokemon-style game built with Python and Pygame.
+A feature-rich Pokemon-style RPG game built with uv run and Pygame, featuring turn-based battles, world exploration, and all the classic Pokemon mechanics you love!
 
-## Directory Structure
+## 🎯 Overview
+
+This Pokemon Game is a comprehensive recreation of the classic Pokemon gaming experience. Explore a vibrant tile-based world, catch and train Pokemon, battle other trainers, and become the Pokemon Champion!
+
+## ✨ Features
+
+### Core Gameplay
+- **Starter Pokemon Selection** - Choose between Bulbasaur, Charmander, or Squirtle
+- **Turn-Based Battle System** with:
+  - Type effectiveness system (18 types)
+  - Physical/Special move split
+  - Status conditions (Paralysis, Burn, Poison, Sleep, Freeze)
+  - Stat modifications
+  - Critical hits and accuracy/evasion
+  - Experience and leveling system
+
+### World Exploration
+- **Grid-Based Movement** - Classic Pokemon-style with smooth animations
+- **Multiple Connected Maps** - Seamless transitions between areas
+- **Different Terrain Types**:
+  - Normal ground and paths
+  - Tall grass (wild Pokemon encounters - 10% chance per step)
+  - Buildings with interiors
+  - Trees and obstacles
+  - Water (Surf required - future feature)
+
+### Pokemon System
+- **Comprehensive Pokemon Mechanics**:
+  - Individual stats (HP, Attack, Defense, Sp. Attack, Sp. Defense, Speed)
+  - Natures affecting stat growth
+  - Abilities with in-battle effects
+  - Move learning and PP system
+  - Shiny Pokemon (0.1% chance)
+  - Evolution (coming soon)
+
+### NPCs and Interactions
+- **Various NPC Types**:
+  - Townspeople with helpful dialogue
+  - Trainers for battles
+  - Professor Oak for guidance
+  - Nurse Joy for Pokemon healing
+  - Item givers
+
+### Items and Inventory
+- **Item Categories**:
+  - Healing items (Potions, Super Potions)
+  - Poke Balls for catching Pokemon
+  - Battle items (X Attack, X Defense)
+  - Key items for progression
+
+
+### Setup Instructions
+
+
+3. **Install dependencies**
+   ```bash
+   uv pip install -r requirements.txt
+   ```
+   Dependencies:
+   - pygame==2.5.2
+   - requests==2.31.0
+   - pillow==10.2.0
+
+4. **Run the game**
+   ```bash
+   # Option 1: Game launcher (recommended)
+   uv run run_game.py
+   
+   # Option 2: Full version
+   uv run main.py
+   
+   # Option 3: Simple version
+   uv run simple_game.py
+   ```
+
+## 🎮 How to Play
+
+### Starting the Game
+1. Run the game using one of the methods above
+2. If using `run_game.py`, select between full or simple version
+3. Choose your starter Pokemon
+4. Begin your adventure in Pallet Town!
+
+### Controls
+
+#### World Exploration
+| Key | Action |
+|-----|--------|
+| Arrow Keys / WASD | Move character |
+| Hold Shift | Run (move faster) |
+| Space | Interact with NPCs/Objects |
+| I | Open Inventory |
+| P | Open Pokemon Menu |
+| ESC | Pause Menu |
+
+#### Battle Controls
+| Key | Action |
+|-----|--------|
+| 1-4 / A | Attack/Select move |
+| C | Catch Pokemon (uses Poke Ball) |
+| R | Run from wild Pokemon |
+| Arrow Keys | Navigate battle menu |
+| Enter | Confirm selection |
+| B | Back/Cancel |
+
+### Game Objectives
+- Build a strong team of Pokemon
+- Explore all areas and talk to NPCs
+- Catch different types of Pokemon
+- Train your team in wild encounters
+- Heal at Pokemon Centers
+- Become the ultimate Pokemon trainer!
+
+### Tips for New Players
+- Type effectiveness is crucial - learn the type chart!
+- Lower a Pokemon's HP before trying to catch it
+- Keep a balanced team with different types
+- Talk to all NPCs for items and information
+- Save frequently (when implemented)
+- Explore tall grass for wild Pokemon
+
+## 🗺️ Map System
+
+### Tile Types
+- `T` = Trees (solid obstacles)
+- `.` = Path/Ground (walkable)
+- `#` = Tall Grass (wild Pokemon encounters)
+- `~` = Water (requires Surf)
+- `B` = Buildings
+- `D` = Doors (entry points)
+
+### Sample Maps
+1. **Pallet Town** - Starting town with Pokemon Center and Professor Oak
+2. **Route 1** - Wild Pokemon area connecting to other towns
+3. **Pokemon Center** - Heal your Pokemon team
+
+### Map Features
+- Grid-based movement (32x32 pixel tiles)
+- Smooth movement animations
+- Collision detection
+- Warp points for transitions
+- Interactive objects (signs, NPCs)
+- Wild Pokemon encounter areas
+
+## 📁 Project Structure
 
 ```
 pokemon_game/
-├── main.py                 # Main game entry point
-├── requirements.txt        # Python dependencies
-├── src/                    # Source code
-│   ├── __init__.py
-│   ├── pokemon.py         # Pokemon class with stats and moves
-│   ├── battle.py          # Turn-based battle system
-│   ├── player.py          # Player character management
-│   ├── game.py            # Main game loop and state management
-│   └── ui.py              # UI rendering components
-├── assets/                 # Game assets
-│   ├── sprites/           # Pokemon sprite images
-│   ├── maps/              # Game world maps
-│   └── sounds/            # Sound effects and music
-└── utils/                  # Utility modules
-    ├── __init__.py
-    └── downloader.py      # Sprite downloader utility
+├── main.py              # Full game entry point
+├── simple_game.py       # Simplified standalone version
+├── run_game.py         # Game launcher
+├── requirements.txt     # Dependencies
+├── README.md           # This file
+├── src/                # Source code
+│   ├── game.py        # Main game loop
+│   ├── pokemon.py     # Pokemon classes
+│   ├── battle.py      # Battle system
+│   ├── player.py      # Player management
+│   ├── ui.py          # User interface
+│   ├── world.py       # World management
+│   ├── map.py         # Map system
+│   ├── encounters.py  # Wild encounters
+│   └── items.py       # Item definitions
+├── assets/            # Game assets
+│   ├── sprites/       # Pokemon sprites
+│   ├── maps/          # Map data
+│   └── sounds/        # Audio files
+└── utils/             # Utilities
+    └── downloader.py  # Sprite downloader
 ```
 
-## Setup
+## 🔧 Technical Details
 
-1. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+### Game Versions
+1. **Full Version** (`main.py`) - Complete Pokemon experience with all features
+2. **Simple Version** (`simple_game.py`) - Lightweight, self-contained version
 
-2. Run the game:
-   ```bash
-   python main.py
-   ```
+### Known Issues & Fixes
+- **Audio on WSL**: Audio is disabled in WSL environments to prevent crashes
+- **Missing Sprites**: Game displays colored shapes as fallback graphics
+- **Performance**: Lower FPS in settings if experiencing lag
 
-## Features
+## 🚀 Future Features
 
-- **Pokemon System**: Complete Pokemon class with stats, types, and moves
-- **Battle System**: Turn-based battles with type effectiveness
-- **Player Character**: Movement, inventory, and Pokemon team management
-- **UI Components**: Battle screens, inventory, and status displays
-- **Sprite Downloader**: Utility to download Pokemon sprites from PokeAPI
+- [ ] Pokemon catching with different ball types
+- [ ] Full evolution system
+- [ ] Save/Load functionality
+- [ ] Gym Leaders and badges
+- [ ] Pokemon PC storage system
+- [ ] Trading system
+- [ ] Day/night cycle
+- [ ] Weather effects
+- [ ] Sound effects and music
+- [ ] Animated sprites
+- [ ] Berry growing
+- [ ] Breeding system
+- [ ] Online features
 
-## Game Controls
+## 🤝 Contributing
 
-### World Exploration
-- Arrow Keys: Move player
-- SPACE: Interact
-- I: Open inventory
-- P: Pokemon menu (not yet implemented)
+Contributions are welcome! Please:
+1. Follow existing code style
+2. Test changes thoroughly
+3. Update documentation
+4. Submit clear pull requests
 
-### Battle
-- 1-4: Select moves
-- R: Run from battle
-- SPACE: Continue after battle ends
+## ⚠️ Notes
 
-### Inventory
-- ESC or I: Close inventory
+- This is a fan-made game for educational purposes
+- Pokemon is a trademark of Nintendo/Game Freak
+- Not affiliated with or endorsed by Nintendo
+- Sprites from PokeAPI (when downloaded)
 
-## Extending the Game
+## 📝 License
 
-### Adding New Pokemon
-Modify the `Pokemon` class in `src/pokemon.py` to add new Pokemon species or moves.
+Educational project - see repository for license details.
 
-### Creating Maps
-Add map data to `assets/maps/` and update the `load_map_data()` method in `src/game.py`.
+---
 
-### Downloading Sprites
-Use the sprite downloader utility:
-```python
-from utils.downloader import SpriteDownloader
+**Enjoy your Pokemon adventure!** 🎮✨
 
-downloader = SpriteDownloader()
-downloader.download_starter_sprites()
-```
-
-## Development Notes
-
-- The game currently uses placeholder rectangles for Pokemon sprites
-- Map rendering is simplified (solid color background)
-- Save/load functionality not yet implemented
-- Pokemon catching mechanics not yet implemented
-
-## Future Enhancements
-
-- [ ] Implement actual sprite rendering
-- [ ] Add Pokemon catching with Pokeballs
-- [ ] Create proper tile-based maps
-- [ ] Add NPCs and trainers
-- [ ] Implement save/load system
-- [ ] Add more Pokemon species and moves
-- [ ] Include sound effects and music
-- [ ] Create Pokemon evolution system
-- [ ] Add Pokemon Center healing
-- [ ] Implement Pokedex
+For support, please open an issue on the repository.

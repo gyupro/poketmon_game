@@ -27,9 +27,9 @@ class Game:
     """Main game class that manages the game loop and states."""
     
     def __init__(self):
-        # Display settings
-        self.SCREEN_WIDTH = 800
-        self.SCREEN_HEIGHT = 600
+        # Display settings - Larger window
+        self.SCREEN_WIDTH = 1280
+        self.SCREEN_HEIGHT = 800
         self.FPS = 60
         
         # Initialize Pygame
@@ -203,8 +203,15 @@ class Game:
                                 # Store current NPC for later use
                                 self.current_npc = npc
                                 if npc.is_trainer and not npc.defeated:
-                                    # Start trainer battle after dialogue
-                                    pass
+                                    # Show exclamation mark for trainer battle
+                                    self.encounter_effects.start_exclamation(
+                                        (npc.x * 32 - self.world.camera_x + 16,
+                                         npc.y * 32 - self.world.camera_y - 20)
+                                    )
+            
+            elif key == pygame.K_F1:
+                # Toggle encounter info display
+                self.show_encounter_info = not self.show_encounter_info
         
         elif self.game_state == GameState.BATTLE:
             # Battle input handled by UI battle menu
@@ -273,6 +280,9 @@ class Game:
             self.update_world(dt)
         elif self.game_state == GameState.BATTLE:
             self.update_battle(dt)
+        
+        # Update encounter effects
+        self.encounter_effects.update(dt)
     
     def update_world(self, dt):
         """Update world exploration state."""
@@ -297,6 +307,17 @@ class Game:
         
         # Update player
         self.player.update(dt)
+        
+        # Add grass rustling effect when in tall grass
+        if self.world and not self.player.is_moving:
+            grid_x, grid_y = self.player.get_grid_position()
+            if self.world.current_map.check_wild_encounter(grid_x, grid_y):
+                # Add occasional grass particles
+                if random.random() < 0.05:  # 5% chance per frame
+                    self.encounter_effects.add_grass_rustle(
+                        self.player.pixel_x - self.world.camera_x,
+                        self.player.pixel_y - self.world.camera_y + 16
+                    )
         
         # Update world
         world_event = self.world.update(dt, self.player)
