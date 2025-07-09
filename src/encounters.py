@@ -291,7 +291,7 @@ class EncounterSystem:
         if self.repel_steps > 0:
             self.repel_steps -= 1
             # Repel only works on Pokemon lower level than lead Pokemon
-            # We'll implement this check when we have access to lead Pokemon level
+            # For now, since we don't have wild Pokemon level yet, repel blocks all encounters
             return True
         return False
     
