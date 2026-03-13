@@ -38,6 +38,9 @@ class Player:
             "super_potion": 1
         }
         
+        # Defeated trainers tracking (persists through save/load)
+        self.defeated_trainers: set = set()
+
         # Last healed location (for whiteout respawn)
         self.last_healed_map = "pallet_town"
         self.last_healed_x = 10
@@ -514,6 +517,7 @@ class Player:
             "last_healed_map": self.last_healed_map,
             "last_healed_x": self.last_healed_x,
             "last_healed_y": self.last_healed_y,
+            "defeated_trainers": list(self.defeated_trainers),
         }
 
     def __str__(self):

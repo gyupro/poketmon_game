@@ -95,6 +95,14 @@ class World:
         self.encounter_system = EncounterSystem()
         self.steps_in_grass = 0  # Consecutive steps in tall grass
         self.last_encounter_position = None
+
+        # Trainer sight-range battle state
+        self.trainer_alert_active = False
+        self.trainer_alert_timer = 0.0
+        self.trainer_alert_duration = 1.0  # seconds to show "!" before battle
+        self.trainer_alert_npc: Optional[NPC] = None
+        # Pending trainer battle data (set when alert finishes, consumed by game.py)
+        self.pending_trainer_battle: Optional[Dict] = None
         
     def _create_pallet_town_npcs(self) -> List[NPC]:
         """Create NPCs for Pallet Town."""
@@ -155,23 +163,50 @@ class World:
     def _create_route_1_npcs(self) -> List[NPC]:
         """Create NPCs for Route 1."""
         npcs = []
-        
-        # Bug Catcher
-        bug_catcher = NPC(
-            name="Bug Catcher Rick",
-            x=10, y=8,
-            sprite="bug_catcher",
+
+        # Youngster Joey - middle of route on the left path section
+        youngster_joey = NPC(
+            name="Youngster Joey",
+            x=14, y=20,
+            sprite="youngster",
             dialogue=[
-                "Hey! You can't just walk past a trainer!",
-                "Let's battle!"
+                "Hey! You look like a Pokemon trainer!"
             ],
+            facing_direction="left",
             is_trainer=True,
             trainer_data={
                 "team": [
-                    {"species": "Pikachu", "level": 4},
-                    {"species": "Bulbasaur", "level": 4}
+                    {"species_id": 19, "level": 4}   # Rattata
                 ],
-                "reward_money": 50
+                "reward_money": 80,
+                "sight_range": 3,
+                "defeated_flag": "trainer_youngster_joey",
+                "dialog_before": "Hey! You look like a Pokemon trainer!",
+                "dialog_after": "You're pretty good..."
+            }
+        )
+        npcs.append(youngster_joey)
+
+        # Bug Catcher Rick - upper section of route
+        bug_catcher = NPC(
+            name="Bug Catcher Rick",
+            x=19, y=6,
+            sprite="bug_catcher",
+            dialogue=[
+                "My bug Pokemon are the best!"
+            ],
+            facing_direction="down",
+            is_trainer=True,
+            trainer_data={
+                "team": [
+                    {"species_id": 10, "level": 3},  # Caterpie
+                    {"species_id": 13, "level": 3}   # Weedle
+                ],
+                "reward_money": 60,
+                "sight_range": 4,
+                "defeated_flag": "trainer_bug_catcher_rick",
+                "dialog_before": "My bug Pokemon are the best!",
+                "dialog_after": "Aww, my bugs lost..."
             }
         )
         npcs.append(bug_catcher)
@@ -344,6 +379,44 @@ class World:
         if self.interaction_cooldown > 0:
             self.interaction_cooldown -= dt
 
+        # --- Trainer sight-range alert phase ---
+        if self.trainer_alert_active:
+            self.trainer_alert_timer += dt
+            if self.trainer_alert_timer >= self.trainer_alert_duration:
+                # Alert finished — trigger the trainer battle
+                npc = self.trainer_alert_npc
+                self.trainer_alert_active = False
+                self.trainer_alert_npc = None
+                self.trainer_alert_timer = 0.0
+                if npc and npc.trainer_data:
+                    self.pending_trainer_battle = {
+                        "npc": npc,
+                        "trainer_data": npc.trainer_data,
+                    }
+                    return "trainer_battle"
+            # Block other events while alert is showing
+            return None
+
+        # --- Check trainer sight range (only when player is not moving) ---
+        if not player.is_moving and not self.current_dialogue:
+            spotted_trainer = self._check_trainer_sight(player)
+            if spotted_trainer is not None:
+                # Begin alert phase: show "!" above trainer
+                self.trainer_alert_active = True
+                self.trainer_alert_timer = 0.0
+                self.trainer_alert_npc = spotted_trainer
+                # Face the player
+                px, py = player.get_grid_position()
+                if px < spotted_trainer.x:
+                    spotted_trainer.facing_direction = "left"
+                elif px > spotted_trainer.x:
+                    spotted_trainer.facing_direction = "right"
+                elif py < spotted_trainer.y:
+                    spotted_trainer.facing_direction = "up"
+                else:
+                    spotted_trainer.facing_direction = "down"
+                return None  # Block movement during alert
+
         # Check for wild encounters if player moved
         if not player.is_moving and not self.current_dialogue:
             grid_x, grid_y = player.get_grid_position()
@@ -492,6 +565,46 @@ class World:
                         npc.y = new_y
                         npc.facing_direction = direction
     
+    def _check_trainer_sight(self, player: Player) -> Optional[NPC]:
+        """Check if the player is within any trainer's sight range on the current map.
+
+        Returns the first undefeated trainer that spots the player, or None.
+        """
+        npcs = self.npcs.get(self.current_map_id, [])
+        player_x, player_y = player.get_grid_position()
+
+        for npc in npcs:
+            if not npc.is_trainer or npc.defeated:
+                continue
+            trainer_data = npc.trainer_data or {}
+            defeated_flag = trainer_data.get("defeated_flag")
+            if defeated_flag and defeated_flag in player.defeated_trainers:
+                # Already defeated — mark NPC so rendering reflects it
+                npc.defeated = True
+                continue
+
+            sight_range = trainer_data.get("sight_range", 0)
+            if sight_range <= 0:
+                continue
+
+            # Determine the tiles in front of the trainer based on facing direction
+            dx, dy = 0, 0
+            if npc.facing_direction == "up":
+                dy = -1
+            elif npc.facing_direction == "down":
+                dy = 1
+            elif npc.facing_direction == "left":
+                dx = -1
+            elif npc.facing_direction == "right":
+                dx = 1
+
+            for dist in range(1, sight_range + 1):
+                check_x = npc.x + dx * dist
+                check_y = npc.y + dy * dist
+                if check_x == player_x and check_y == player_y:
+                    return npc
+        return None
+
     def _is_npc_at(self, x: int, y: int) -> bool:
         """Check if an NPC is at the given position."""
         npcs = self.npcs.get(self.current_map_id, [])
@@ -525,11 +638,25 @@ class World:
         for npc in npcs:
             if npc.x == facing_x and npc.y == facing_y:
                 self.interaction_cooldown = 0.5
-                
-                # Start dialogue
-                self.current_dialogue = npc.dialogue.copy()
+
+                # Sync defeated state from player's defeated_trainers set
+                if npc.is_trainer and npc.trainer_data:
+                    defeated_flag = npc.trainer_data.get("defeated_flag")
+                    if defeated_flag and defeated_flag in player.defeated_trainers:
+                        npc.defeated = True
+
+                # Choose dialogue based on defeated status
+                if npc.is_trainer and npc.trainer_data:
+                    if npc.defeated:
+                        dialog_after = npc.trainer_data.get("dialog_after", "...")
+                        self.current_dialogue = [dialog_after]
+                    else:
+                        dialog_before = npc.trainer_data.get("dialog_before")
+                        self.current_dialogue = [dialog_before] if dialog_before else npc.dialogue.copy()
+                else:
+                    self.current_dialogue = npc.dialogue.copy()
                 self.dialogue_index = 0
-                
+
                 # Face the player
                 if player.facing_direction == "up":
                     npc.facing_direction = "down"
@@ -678,6 +805,10 @@ class World:
         # Day/night tint overlay
         if self.day_night_enabled:
             self._render_day_night_tint(screen)
+
+        # Draw trainer alert "!" indicator
+        if self.trainer_alert_active and self.trainer_alert_npc:
+            self._render_trainer_alert(screen, self.trainer_alert_npc)
 
         # Draw dialogue box if active
         if self.current_dialogue:
@@ -932,6 +1063,38 @@ class World:
                     pygame.draw.circle(screen, dot_color,
                                        (indicator_x - 6 + i * 6, indicator_y + 4), 2)
     
+    def _render_trainer_alert(self, screen: pygame.Surface, npc: NPC):
+        """Render a large '!' alert bubble above a trainer who spotted the player."""
+        ts = self.current_map.tile_size
+        cam_x = int(self.camera_x)
+        cam_y = int(self.camera_y)
+        sx = npc.x * ts - cam_x
+        sy = npc.y * ts - cam_y
+
+        # Bounce effect based on alert timer
+        progress = min(1.0, self.trainer_alert_timer / self.trainer_alert_duration)
+        bounce = int(math.sin(progress * math.pi) * 6)
+
+        indicator_x = sx + ts // 2
+        indicator_y = sy - 18 - bounce
+
+        # White bubble background
+        bub_rect = pygame.Rect(indicator_x - 12, indicator_y - 6, 24, 24)
+        pygame.draw.ellipse(screen, (255, 255, 255), bub_rect)
+        pygame.draw.ellipse(screen, (0, 0, 0), bub_rect, 2)
+        # Bubble tail
+        pygame.draw.polygon(screen, (255, 255, 255), [
+            (indicator_x - 3, indicator_y + 17),
+            (indicator_x + 3, indicator_y + 17),
+            (indicator_x, indicator_y + 23),
+        ])
+
+        # Red "!" text
+        font = pygame.font.Font(None, 30)
+        excl_surf = font.render("!", True, (220, 40, 40))
+        screen.blit(excl_surf, (indicator_x - excl_surf.get_width() // 2,
+                                indicator_y - 2))
+
     def _render_dialogue(self, screen: pygame.Surface):
         """Render dialogue box."""
         # Create dialogue box
@@ -1090,6 +1253,50 @@ class World:
             fade_surf.fill((0, 0, 0))
             fade_surf.set_alpha(min(255, self.map_transition_alpha))
             screen.blit(fade_surf, (0, 0))
+
+    def create_trainer_battle_opponent(self) -> Optional[Tuple]:
+        """Build a (Trainer, NPC) tuple from pending_trainer_battle data.
+
+        Returns None if there is no pending trainer battle.
+        The caller should start a Battle(player, trainer, BattleType.TRAINER).
+        """
+        if not self.pending_trainer_battle:
+            return None
+
+        from .battle import Trainer as BattleTrainer
+        from .pokemon import create_pokemon_from_species
+
+        npc = self.pending_trainer_battle["npc"]
+        data = self.pending_trainer_battle["trainer_data"]
+        self.pending_trainer_battle = None  # consume
+
+        team = []
+        for entry in data.get("team", []):
+            species_id = entry.get("species_id")
+            level = entry.get("level", 5)
+            if species_id is not None:
+                pokemon = create_pokemon_from_species(species_id, level)
+                team.append(pokemon)
+
+        if not team:
+            return None
+
+        trainer = BattleTrainer(
+            name=npc.name,
+            pokemon_team=team,
+            trainer_class=npc.sprite,
+            prize_money=data.get("reward_money", 100),
+            ai_level=1,
+        )
+        return (trainer, npc)
+
+    def mark_trainer_defeated(self, npc: NPC, player: Player):
+        """Mark a trainer NPC as defeated and record the flag on the player."""
+        npc.defeated = True
+        if npc.trainer_data:
+            defeated_flag = npc.trainer_data.get("defeated_flag")
+            if defeated_flag:
+                player.defeated_trainers.add(defeated_flag)
 
     def get_wild_encounter(self, player_data: Optional[Dict] = None) -> Optional[Pokemon]:
         """Get a wild Pokemon encounter for the current area."""
