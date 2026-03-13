@@ -112,25 +112,21 @@ class EncounterEffects:
                 self.flash_active = False
                 
         # Update grass particles
-        for particle in self.grass_particles[:]:
+        for particle in self.grass_particles:
             particle['x'] += particle['vx']
             particle['y'] += particle['vy']
             particle['vy'] += 0.2  # Gravity
             particle['life'] -= dt * 2
-            
-            if particle['life'] <= 0:
-                self.grass_particles.remove(particle)
-                
+        self.grass_particles = [p for p in self.grass_particles if p['life'] > 0]
+
         # Update shiny sparkles
-        for sparkle in self.shiny_sparkles[:]:
+        for sparkle in self.shiny_sparkles:
             sparkle['x'] += sparkle['vx']
             sparkle['y'] += sparkle['vy']
             sparkle['vx'] *= 0.95  # Deceleration
             sparkle['vy'] *= 0.95
             sparkle['life'] -= dt / self.sparkle_duration
-            
-            if sparkle['life'] <= 0:
-                self.shiny_sparkles.remove(sparkle)
+        self.shiny_sparkles = [s for s in self.shiny_sparkles if s['life'] > 0]
                 
     def render(self):
         """Render all active effects."""

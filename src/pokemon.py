@@ -339,6 +339,7 @@ class Pokemon:
         
         # Special properties
         self.is_shiny = False  # Shiny Pokemon have different coloration
+        self.flinched = False  # Volatile battle status: flinch
         
         # Experience
         self.experience_group = species_data.get("experience_group", "medium_fast")
@@ -617,7 +618,7 @@ class Pokemon:
         # Use a base 40 power physical "move" against self
         level_factor = (2 * self.level + 10) / 250
         attack = self.get_modified_stat("attack")
-        defense = self.get_modified_stat("defense")
+        defense = max(1, self.get_modified_stat("defense"))
         base_damage = level_factor * 40 * (attack / defense) + 2
         return max(1, int(base_damage))
     
@@ -677,21 +678,14 @@ class Pokemon:
         for stat in self.stat_stages:
             self.stat_stages[stat] = 0
     
-    def calculate_damage(self, move: Move, defender: 'Pokemon', 
+    def calculate_damage(self, move: Move, defender: 'Pokemon',
                         critical: bool = False) -> Tuple[int, float, List[str]]:
-        """Calculate damage dealt by a move. Returns (damage, effectiveness, events)."""
+        """Calculate damage dealt by a move. Returns (damage, effectiveness, events).
+
+        Note: Accuracy is checked by the battle system before calling this method.
+        """
         events = []
-        
-        # Check if move missed
-        accuracy = move.accuracy
-        if self.stat_stages["accuracy"] != 0:
-            accuracy = accuracy * self.get_accuracy_multiplier()
-        if defender.stat_stages["evasion"] != 0:
-            accuracy = accuracy * defender.get_evasion_multiplier()
-        
-        if random.randint(1, 100) > accuracy:
-            return 0, 1.0, [f"{self.nickname}'s attack missed!"]
-        
+
         # Status moves don't deal damage
         if move.category == "status":
             return 0, 1.0, events
@@ -699,10 +693,10 @@ class Pokemon:
         # Get attacking and defending stats
         if move.category == "physical":
             attack_stat = self.get_modified_stat("attack")
-            defense_stat = defender.get_modified_stat("defense")
+            defense_stat = max(1, defender.get_modified_stat("defense"))
         else:  # special
             attack_stat = self.get_modified_stat("sp_attack")
-            defense_stat = defender.get_modified_stat("sp_defense")
+            defense_stat = max(1, defender.get_modified_stat("sp_defense"))
         
         # Basic damage formula
         level_factor = (2 * self.level + 10) / 250

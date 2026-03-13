@@ -308,7 +308,12 @@ class Game:
         """Update world exploration state."""
         if not self.player or not self.world:
             return
-        
+
+        # Block player input during map transitions
+        if self.world.map_transition_active:
+            self.world.update(dt, self.player)
+            return
+
         # Handle player movement (grid-based)
         if not self.player.is_moving and not self.world.current_dialogue:
             # Check for running
@@ -454,9 +459,13 @@ class Game:
             # UI handles battle rendering
             pass
         
+        elif self.game_state == GameState.PAUSED:
+            # Draw world underneath the pause overlay
+            self.render_world()
+
         elif self.game_state in [GameState.POKEMON_MENU, GameState.BAG_MENU]:
-            # UI handles these menus
-            pass
+            # Draw world underneath so menus overlay the world
+            self.render_world()
         
         # Let UI draw on top if not in starter selection
         if not self.starter_selection_active:
@@ -478,39 +487,26 @@ class Game:
                 encounter_data = self.world.get_encounter_info()
                 self.encounter_info.render(self.screen, encounter_data)
             
-            # Show current position (helpful for navigation)
-            pos_font = pygame.font.Font(None, 20)
-            grid_x, grid_y = self.player.get_grid_position()
-            pos_text = f"Position: ({grid_x}, {grid_y}) - {self.world.current_map.name}"
-            pos_surface = pos_font.render(pos_text, True, (255, 255, 255))
-            pos_bg = pygame.Surface((pos_surface.get_width() + 10, pos_surface.get_height() + 4))
-            pos_bg.fill((0, 0, 0))
-            pos_bg.set_alpha(128)
-            self.screen.blit(pos_bg, (5, 5))
-            self.screen.blit(pos_surface, (10, 7))
-                
-            # Instructions hint
-            font = pygame.font.Font(None, 20)
-            hint_text = font.render("Press F1 to toggle encounter info", True, (255, 255, 255))
-            hint_bg = pygame.Surface((hint_text.get_width() + 10, hint_text.get_height() + 4))
-            hint_bg.fill((0, 0, 0))
-            hint_bg.set_alpha(128)
-            self.screen.blit(hint_bg, (self.SCREEN_WIDTH - hint_text.get_width() - 15, 5))
-            self.screen.blit(hint_text, (self.SCREEN_WIDTH - hint_text.get_width() - 10, 7))
-            
-            # Show tip if in area without encounters
+            # Show location name via UI location banner
+            if hasattr(self.world, 'current_map') and self.world.current_map:
+                self.ui.show_location(self.world.current_map.name)
+
+            # Show tip if in area without encounters (semi-transparent rounded style)
             if self.world.current_map_id not in self.world.encounter_system.encounter_tables:
-                tip_font = pygame.font.Font(None, 28)
-                tip_text = "No wild Pokemon here! Go STRAIGHT UP to the TOP of town for Route 1!"
-                text_surface = tip_font.render(tip_text, True, (255, 255, 0))
-                text_rect = text_surface.get_rect(center=(self.SCREEN_WIDTH // 2, 60))
-                
-                # Draw background
-                bg_rect = text_rect.inflate(20, 10)
-                pygame.draw.rect(self.screen, (0, 0, 0), bg_rect)
-                pygame.draw.rect(self.screen, (255, 255, 0), bg_rect, 2)
-                
-                # Draw text
+                tip_font = pygame.font.Font(None, 26)
+                tip_text = "No wild Pokemon here -- head NORTH to Route 1!"
+                text_surface = tip_font.render(tip_text, True, (255, 240, 100))
+                text_rect = text_surface.get_rect(center=(self.SCREEN_WIDTH // 2, 55))
+
+                bg_rect = text_rect.inflate(24, 12)
+                bg_surf = pygame.Surface((bg_rect.width, bg_rect.height), pygame.SRCALPHA)
+                pygame.draw.rect(bg_surf, (20, 20, 30, 200),
+                                 (0, 0, bg_rect.width, bg_rect.height),
+                                 border_radius=8)
+                pygame.draw.rect(bg_surf, (255, 200, 50, 160),
+                                 (0, 0, bg_rect.width, bg_rect.height),
+                                 width=2, border_radius=8)
+                self.screen.blit(bg_surf, bg_rect.topleft)
                 self.screen.blit(text_surface, text_rect)
         else:
             # Fallback rendering

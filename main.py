@@ -20,19 +20,13 @@ def main():
         pygame.init()
         
         print("Initializing font system...")
-        if not pygame.font.init():
+        pygame.font.init()
+        if not pygame.font.get_init():
             print("Warning: Font system initialization failed")
         
-        print("Initializing sound system...")
-        try:
-            # Initialize with no audio in WSL environment
-            pygame.mixer.pre_init(frequency=22050, size=-16, channels=2, buffer=1024)
-            pygame.mixer.init()
-        except pygame.error as e:
-            print(f"Warning: Sound system initialization failed: {e}")
-            print("Game will continue without sound.")
-            # Disable mixer completely if initialization fails
-            pygame.mixer.quit()
+        # Skip slow mixer init - no audio assets in use
+        # This avoids 5-10s hangs on WSL/headless environments
+        print("Sound system skipped (no audio assets).")
         
         # Set up display
         print("Setting up display...")

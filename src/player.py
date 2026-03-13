@@ -6,6 +6,7 @@ from typing import List, Optional, Tuple
 from .pokemon import Pokemon
 import pygame
 import os
+import math
 
 
 class Player:
@@ -219,40 +220,211 @@ class Player:
         return (self.grid_x + dx, self.grid_y + dy)
     
     def render(self, screen: pygame.Surface, camera_x: int, camera_y: int):
-        """Render the player sprite."""
-        # Calculate screen position
+        """Render the player character with detailed sprite."""
         screen_x = int(self.pixel_x - camera_x)
         screen_y = int(self.pixel_y - camera_y)
-        
-        # Draw player (placeholder rectangle for now)
-        player_rect = pygame.Rect(screen_x, screen_y, self.TILE_SIZE, self.TILE_SIZE)
-        color = self.sprites[self.facing_direction][0]
-        pygame.draw.rect(screen, color, player_rect)
-        pygame.draw.rect(screen, (0, 0, 0), player_rect, 2)
-        
-        # Draw direction indicator
-        center_x = screen_x + self.TILE_SIZE // 2
-        center_y = screen_y + self.TILE_SIZE // 2
+        ts = self.TILE_SIZE
+        t = self.animation_timer
+
+        # Walking bobbing animation
+        bob_offset = 0
+        if self.is_moving:
+            bob_offset = int(math.sin(t * 16) * 2)
+
+        # --- Shadow under the player ---
+        shadow_surf = pygame.Surface((ts + 4, 10), pygame.SRCALPHA)
+        pygame.draw.ellipse(shadow_surf, (0, 0, 0, 55),
+                            pygame.Rect(4, 0, ts - 4, 10))
+        screen.blit(shadow_surf, (screen_x - 2, screen_y + ts - 6))
+
+        # --- Shoes (drawn first so legs overlap) ---
+        shoe_color = (180, 40, 40)
+        shoe_highlight = (210, 70, 60)
+        body_y = screen_y + 12 + bob_offset
+        leg_y = body_y + 14
+        shoe_y = leg_y + 5
+        leg_phase = math.sin(t * 16) * 3 if self.is_moving else 0
+
+        # Left shoe
+        ls_y = int(shoe_y + leg_phase) if self.is_moving else shoe_y
+        pygame.draw.rect(screen, shoe_color,
+                         pygame.Rect(screen_x + 7, ls_y, 7, 3), border_radius=1)
+        pygame.draw.rect(screen, shoe_highlight,
+                         pygame.Rect(screen_x + 7, ls_y, 5, 1))
+        # Right shoe
+        rs_y = int(shoe_y - leg_phase) if self.is_moving else shoe_y
+        pygame.draw.rect(screen, shoe_color,
+                         pygame.Rect(screen_x + ts - 14, rs_y, 7, 3), border_radius=1)
+        pygame.draw.rect(screen, shoe_highlight,
+                         pygame.Rect(screen_x + ts - 14, rs_y, 5, 1))
+
+        # --- Legs (walking animation) ---
+        leg_color = (50, 50, 65)  # Dark pants
+        leg_highlight = (65, 65, 80)
+        if self.is_moving:
+            # Left leg
+            ll_y = int(leg_y + leg_phase)
+            pygame.draw.rect(screen, leg_color,
+                             pygame.Rect(screen_x + 8, ll_y, 6, 6), border_radius=1)
+            pygame.draw.rect(screen, leg_highlight,
+                             pygame.Rect(screen_x + 8, ll_y, 3, 5))
+            # Right leg
+            rl_y = int(leg_y - leg_phase)
+            pygame.draw.rect(screen, leg_color,
+                             pygame.Rect(screen_x + ts - 14, rl_y, 6, 6), border_radius=1)
+            pygame.draw.rect(screen, leg_highlight,
+                             pygame.Rect(screen_x + ts - 14, rl_y, 3, 5))
+        else:
+            pygame.draw.rect(screen, leg_color,
+                             pygame.Rect(screen_x + 8, leg_y, 6, 5), border_radius=1)
+            pygame.draw.rect(screen, leg_highlight,
+                             pygame.Rect(screen_x + 8, leg_y, 3, 4))
+            pygame.draw.rect(screen, leg_color,
+                             pygame.Rect(screen_x + ts - 14, leg_y, 6, 5), border_radius=1)
+            pygame.draw.rect(screen, leg_highlight,
+                             pygame.Rect(screen_x + ts - 14, leg_y, 3, 4))
+
+        # --- Body (torso / jacket) ---
+        jacket_color = (30, 100, 200)  # Blue jacket
+        jacket_dark = (20, 75, 165)
+        jacket_light = (50, 120, 220)
+        body_rect = pygame.Rect(screen_x + 6, body_y, ts - 12, 14)
+        pygame.draw.rect(screen, jacket_color, body_rect, border_radius=3)
+        # Jacket shading (left lighter, right darker)
+        pygame.draw.rect(screen, jacket_light,
+                         pygame.Rect(screen_x + 6, body_y + 1, (ts - 12) // 2, 12),
+                         border_radius=2)
+        # Jacket zipper line
+        pygame.draw.line(screen, jacket_dark,
+                         (screen_x + ts // 2, body_y + 2),
+                         (screen_x + ts // 2, body_y + 13), 1)
+        # Collar
+        pygame.draw.line(screen, (240, 240, 245),
+                         (screen_x + 8, body_y),
+                         (screen_x + ts - 8, body_y), 1)
+
+        # --- Backpack (visible from behind and sides) ---
         if self.facing_direction == "up":
-            pygame.draw.polygon(screen, (255, 255, 0), 
-                              [(center_x, screen_y - 5), 
-                               (center_x - 5, screen_y), 
-                               (center_x + 5, screen_y)])
-        elif self.facing_direction == "down":
-            pygame.draw.polygon(screen, (255, 255, 0), 
-                              [(center_x, screen_y + self.TILE_SIZE + 5), 
-                               (center_x - 5, screen_y + self.TILE_SIZE), 
-                               (center_x + 5, screen_y + self.TILE_SIZE)])
+            bp_rect = pygame.Rect(screen_x + 8, body_y + 2, ts - 16, 10)
+            pygame.draw.rect(screen, (160, 50, 40), bp_rect, border_radius=2)
+            pygame.draw.rect(screen, (140, 40, 30), bp_rect, 1)
+            # Backpack strap
+            pygame.draw.line(screen, (130, 35, 28),
+                             (screen_x + 10, body_y), (screen_x + 10, body_y + 5), 1)
+            pygame.draw.line(screen, (130, 35, 28),
+                             (screen_x + ts - 10, body_y), (screen_x + ts - 10, body_y + 5), 1)
+        elif self.facing_direction in ("left", "right"):
+            bp_x = screen_x + ts - 8 if self.facing_direction == "left" else screen_x + 3
+            bp_rect = pygame.Rect(bp_x, body_y + 3, 5, 8)
+            pygame.draw.rect(screen, (160, 50, 40), bp_rect, border_radius=1)
+
+        # --- Arms ---
+        arm_skin = (255, 210, 175)
+        arm_sleeve = (35, 105, 205)
+        arm_y = body_y + 2
+        arm_swing = math.sin(t * 16) * 2.5 if self.is_moving else 0
+
+        if self.facing_direction in ("down", "up"):
+            # Left arm
+            la_y = int(arm_y + arm_swing)
+            pygame.draw.rect(screen, arm_sleeve,
+                             pygame.Rect(screen_x + 3, la_y, 4, 4), border_radius=1)
+            pygame.draw.rect(screen, arm_skin,
+                             pygame.Rect(screen_x + 3, la_y + 4, 3, 5))
+            # Right arm
+            ra_y = int(arm_y - arm_swing)
+            pygame.draw.rect(screen, arm_sleeve,
+                             pygame.Rect(screen_x + ts - 7, ra_y, 4, 4), border_radius=1)
+            pygame.draw.rect(screen, arm_skin,
+                             pygame.Rect(screen_x + ts - 6, ra_y + 4, 3, 5))
         elif self.facing_direction == "left":
-            pygame.draw.polygon(screen, (255, 255, 0), 
-                              [(screen_x - 5, center_y), 
-                               (screen_x, center_y - 5), 
-                               (screen_x, center_y + 5)])
+            # Front arm visible
+            pygame.draw.rect(screen, arm_sleeve,
+                             pygame.Rect(screen_x + 2, arm_y, 4, 4), border_radius=1)
+            pygame.draw.rect(screen, arm_skin,
+                             pygame.Rect(screen_x + 2, arm_y + 4, 3, 5))
         elif self.facing_direction == "right":
-            pygame.draw.polygon(screen, (255, 255, 0), 
-                              [(screen_x + self.TILE_SIZE + 5, center_y), 
-                               (screen_x + self.TILE_SIZE, center_y - 5), 
-                               (screen_x + self.TILE_SIZE, center_y + 5)])
+            pygame.draw.rect(screen, arm_sleeve,
+                             pygame.Rect(screen_x + ts - 6, arm_y, 4, 4), border_radius=1)
+            pygame.draw.rect(screen, arm_skin,
+                             pygame.Rect(screen_x + ts - 5, arm_y + 4, 3, 5))
+
+        # --- Head ---
+        head_cx = screen_x + ts // 2
+        head_cy = screen_y + 9 + bob_offset
+        head_r = 7
+
+        # Skin color
+        skin_color = (255, 220, 185)
+        skin_shadow = (235, 195, 160)
+        pygame.draw.circle(screen, skin_shadow, (head_cx + 1, head_cy + 1), head_r)
+        pygame.draw.circle(screen, skin_color, (head_cx, head_cy), head_r)
+
+        # --- Cap / Hat ---
+        hat_color = (220, 50, 50)
+        hat_dark = (180, 35, 35)
+        hat_band = (240, 240, 240)
+        if self.facing_direction == "up":
+            # Cap visible from behind (full coverage)
+            pygame.draw.circle(screen, hat_color, (head_cx, head_cy - 1), head_r)
+            # Brim (back edge)
+            pygame.draw.arc(screen, hat_dark,
+                            pygame.Rect(head_cx - head_r, head_cy - head_r,
+                                        head_r * 2, head_r * 2),
+                            0.3, math.pi - 0.3, head_r)
+            # Band
+            pygame.draw.line(screen, hat_band,
+                             (head_cx - 5, head_cy + 3), (head_cx + 5, head_cy + 3), 1)
+            # Hair peeking below cap
+            pygame.draw.rect(screen, (50, 35, 18),
+                             pygame.Rect(head_cx - 5, head_cy + 4, 10, 3))
+        else:
+            # Cap top dome
+            pygame.draw.circle(screen, hat_color, (head_cx, head_cy - 3), 6)
+            # Cap front brim
+            brim_dir = 0
+            if self.facing_direction == "left":
+                brim_dir = -1
+            elif self.facing_direction == "right":
+                brim_dir = 1
+
+            brim_x = head_cx + brim_dir * 3
+            pygame.draw.ellipse(screen, hat_dark,
+                                pygame.Rect(brim_x - 7, head_cy - 2, 14, 5))
+            pygame.draw.ellipse(screen, hat_color,
+                                pygame.Rect(brim_x - 6, head_cy - 2, 12, 4))
+            # Cap band / logo accent
+            pygame.draw.line(screen, hat_band,
+                             (head_cx - 4, head_cy - 1), (head_cx + 4, head_cy - 1), 1)
+            # Cap button on top
+            pygame.draw.circle(screen, hat_band, (head_cx, head_cy - 6), 1)
+
+        # --- Eyes (direction indicator with whites and pupils) ---
+        if self.facing_direction == "down":
+            # White of eye
+            pygame.draw.circle(screen, (255, 255, 255), (head_cx - 3, head_cy + 1), 3)
+            pygame.draw.circle(screen, (255, 255, 255), (head_cx + 3, head_cy + 1), 3)
+            # Pupils
+            pygame.draw.circle(screen, (30, 30, 40), (head_cx - 3, head_cy + 2), 2)
+            pygame.draw.circle(screen, (30, 30, 40), (head_cx + 3, head_cy + 2), 2)
+            # Eye shine
+            pygame.draw.circle(screen, (255, 255, 255), (head_cx - 2, head_cy + 1), 1)
+            pygame.draw.circle(screen, (255, 255, 255), (head_cx + 4, head_cy + 1), 1)
+            # Mouth
+            pygame.draw.line(screen, (200, 140, 130),
+                             (head_cx - 1, head_cy + 5), (head_cx + 1, head_cy + 5), 1)
+        elif self.facing_direction == "up":
+            pass  # Back of head -- no eyes visible
+        elif self.facing_direction == "left":
+            # Single visible eye (left profile)
+            pygame.draw.circle(screen, (255, 255, 255), (head_cx - 4, head_cy + 1), 3)
+            pygame.draw.circle(screen, (30, 30, 40), (head_cx - 5, head_cy + 2), 2)
+            pygame.draw.circle(screen, (255, 255, 255), (head_cx - 4, head_cy + 1), 1)
+        elif self.facing_direction == "right":
+            # Single visible eye (right profile)
+            pygame.draw.circle(screen, (255, 255, 255), (head_cx + 4, head_cy + 1), 3)
+            pygame.draw.circle(screen, (30, 30, 40), (head_cx + 5, head_cy + 2), 2)
+            pygame.draw.circle(screen, (255, 255, 255), (head_cx + 4, head_cy + 1), 1)
     
     def can_battle(self) -> bool:
         """Check if player has any Pokemon that can battle."""

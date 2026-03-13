@@ -208,7 +208,7 @@ class Battle:
         elif action_type == BattleAction.BAG:
             item_id = kwargs.get("item_id")
             target_index = kwargs.get("target_index", 0)
-            if not item_id or item_id not in self.player.inventory:
+            if not item_id or item_id not in self.player.inventory or self.player.inventory[item_id] <= 0:
                 return False
             self.player_action = TurnAction(
                 "item", self.player_pokemon,
@@ -360,6 +360,10 @@ class Battle:
         # Simplified - trainers don't use items in this implementation
         # Could be expanded to include item usage
         return False
+
+    def _get_best_item_use(self) -> Optional[TurnAction]:
+        """Get the best item to use for the trainer AI. Currently unused."""
+        return None
     
     def _get_trainer_move(self) -> TurnAction:
         """Select best move for trainer's Pokemon."""
@@ -382,29 +386,32 @@ class Battle:
         best_score = -999
         best_move_index = 0
         best_move = valid_moves[0][1]
-        
+
         for move_index, move in valid_moves:
             score = 0
-            
+            effectiveness = 1.0  # Default for status moves and type-neutral
+
             # Base power
             if move.category != "status":
                 score += move.power
-                
+
                 # Type effectiveness
                 effectiveness = opp_pokemon.get_type_effectiveness(move.type, player_pokemon.types)
                 score *= effectiveness
-                
+
                 # STAB bonus
                 if move.type in opp_pokemon.types:
                     score *= 1.5
-                
+
                 # Category matchup
                 if move.category == "physical":
-                    attack_ratio = opp_pokemon.get_modified_stat("attack") / player_pokemon.get_modified_stat("defense")
+                    defense_stat = max(1, player_pokemon.get_modified_stat("defense"))
+                    attack_ratio = opp_pokemon.get_modified_stat("attack") / defense_stat
                 else:
-                    attack_ratio = opp_pokemon.get_modified_stat("sp_attack") / player_pokemon.get_modified_stat("sp_defense")
+                    sp_defense_stat = max(1, player_pokemon.get_modified_stat("sp_defense"))
+                    attack_ratio = opp_pokemon.get_modified_stat("sp_attack") / sp_defense_stat
                 score *= attack_ratio
-            
+
             # Status moves
             else:
                 # Prioritize status moves when appropriate
@@ -421,7 +428,6 @@ class Battle:
                         stat_name = "_".join(stat_parts[1:])
                         if stat_name in opp_pokemon.stat_stages and opp_pokemon.stat_stages[stat_name] < 2:
                             score += 40
-                effectiveness = 1.0  # Status moves have neutral effectiveness
             
             # AI level adjustments
             if ai_level >= 3:
@@ -463,11 +469,11 @@ class Battle:
         # Simplified damage calculation for AI
         if move.category == "physical":
             attack = attacker.get_modified_stat("attack")
-            defense = defender.get_modified_stat("defense")
+            defense = max(1, defender.get_modified_stat("defense"))
         else:
             attack = attacker.get_modified_stat("sp_attack")
-            defense = defender.get_modified_stat("sp_defense")
-        
+            defense = max(1, defender.get_modified_stat("sp_defense"))
+
         damage = ((2 * attacker.level + 10) / 250) * (attack / defense) * move.power + 2
         
         # Type effectiveness
@@ -480,19 +486,22 @@ class Battle:
         
         return int(damage * 0.9)  # Average roll
     
-    def _calculate_type_matchup(self, attacker_types: List[PokemonType], 
+    def _calculate_type_matchup(self, attacker_types: List[PokemonType],
                                 defender_types: List[PokemonType]) -> float:
-        """Calculate overall type matchup advantage."""
+        """Calculate overall type matchup advantage using the actual type chart."""
+        from .pokemon import TYPE_EFFECTIVENESS
+
         total_effectiveness = 0
         count = 0
-        
+
         for att_type in attacker_types:
+            effectiveness = 1.0
             for def_type in defender_types:
-                effectiveness = 1.0
-                # This is simplified - would need full type chart
-                total_effectiveness += effectiveness
-                count += 1
-        
+                if att_type in TYPE_EFFECTIVENESS and def_type in TYPE_EFFECTIVENESS[att_type]:
+                    effectiveness *= TYPE_EFFECTIVENESS[att_type][def_type]
+            total_effectiveness += effectiveness
+            count += 1
+
         return total_effectiveness / count if count > 0 else 1.0
     
     def _execute_turn(self):
@@ -535,6 +544,10 @@ class Battle:
         if not self.is_over:
             self._process_end_of_turn()
         
+        # Reset flinch flags at end of turn
+        self.player_pokemon.flinched = False
+        self.opponent_pokemon.flinched = False
+
         # Reset actions
         self.player_action = None
         self.opponent_action = None
@@ -553,9 +566,9 @@ class Battle:
             return
         
         # Check flinch
-        if attacker.status == StatusCondition.FLINCHED:
+        if getattr(attacker, 'flinched', False):
             self.add_to_log(f"{attacker.nickname} flinched and couldn't move!")
-            attacker.status = StatusCondition.NONE  # Flinch only lasts one turn
+            attacker.flinched = False  # Flinch only lasts one turn
             return
         
         # Get and use move
@@ -585,11 +598,11 @@ class Battle:
             self._execute_damage_move(attacker, defender, move)
         
         # Track last move
-        self.last_used_move = move
-        if move == self.last_used_move:
+        if self.last_used_move and move.name == self.last_used_move.name:
             self.consecutive_move_count += 1
         else:
             self.consecutive_move_count = 1
+        self.last_used_move = move
     
     def _execute_damage_move(self, attacker: Pokemon, defender: Pokemon, move: Move):
         """Execute a damaging move."""
@@ -653,7 +666,9 @@ class Battle:
                 self.add_to_log(f"{target.nickname} became confused!")
         
         elif effect == "flinch":
-            target.status = StatusCondition.FLINCHED
+            # Flinch is a volatile status; track separately to avoid overwriting
+            # the main status (burn, poison, etc.)
+            target.flinched = True
         
         elif effect == "lower_attack":
             success, message = target.modify_stat_stage("attack", -1)
@@ -789,13 +804,16 @@ class Battle:
                 self._attempt_catch(item)
             else:
                 # Use item on Pokemon
-                target = self.player.pokemon_team[target_index]
-                success, message = item.use(target)
-                if success:
-                    self.player.inventory[item_id] -= 1
-                    self.add_to_log(message)
+                if 0 <= target_index < len(self.player.pokemon_team):
+                    target = self.player.pokemon_team[target_index]
+                    success, message = item.use(target)
+                    if success:
+                        self.player.inventory[item_id] = max(0, self.player.inventory.get(item_id, 0) - 1)
+                        self.add_to_log(message)
+                    else:
+                        self.add_to_log(f"The {item.name} won't have any effect!")
                 else:
-                    self.add_to_log(f"The {item.name} won't have any effect!")
+                    self.add_to_log("Invalid target!")
     
     def _attempt_catch(self, pokeball: PokeballItem):
         """Attempt to catch a wild Pokemon."""
@@ -804,7 +822,11 @@ class Battle:
             return
         
         self.add_to_log(f"You used a {pokeball.name}!")
-        self.player.inventory[pokeball.id] -= 1
+        current_count = self.player.inventory.get(pokeball.id, 0)
+        if current_count <= 0:
+            self.add_to_log(f"You don't have any {pokeball.name}s!")
+            return
+        self.player.inventory[pokeball.id] = current_count - 1
         
         # Calculate catch rate
         target = self.opponent_pokemon
@@ -829,6 +851,7 @@ class Battle:
             return
         
         # Shake checks (4 shakes = catch)
+        modified_rate = max(1, modified_rate)
         shake_probability = 65536 / (255 / modified_rate) ** 0.1875
         
         self.shake_count = 0
@@ -879,13 +902,14 @@ class Battle:
                 # Reset stat stages
                 old_pokemon.reset_stat_stages()
         else:
-            if self.opponent and self.opponent.switch_pokemon(switch_index):
+            if self.opponent:
                 old_pokemon = self.opponent_pokemon
-                self.opponent_pokemon = self.opponent.active_pokemon
-                self.add_to_log(f"{self.opponent.name} withdrew {old_pokemon.species_name}!")
-                self.add_to_log(f"{self.opponent.name} sent out {self.opponent_pokemon.species_name}!")
-                # Reset stat stages
-                old_pokemon.reset_stat_stages()
+                if self.opponent.switch_pokemon(switch_index):
+                    self.opponent_pokemon = self.opponent.active_pokemon
+                    self.add_to_log(f"{self.opponent.name} withdrew {old_pokemon.species_name}!")
+                    self.add_to_log(f"{self.opponent.name} sent out {self.opponent_pokemon.species_name}!")
+                    # Reset stat stages
+                    old_pokemon.reset_stat_stages()
     
     def _execute_run(self, actor: str, action: TurnAction):
         """Execute run attempt."""
@@ -895,7 +919,8 @@ class Battle:
             opponent_speed = self.opponent_pokemon.get_modified_stat("speed")
             
             # Formula: (Player Speed * 32) / (Opponent Speed / 4) % 256 + 30 * attempts
-            escape_chance = ((player_speed * 32) // (opponent_speed // 4)) % 256 + 30 * (self.turn - 1)
+            opponent_speed_divisor = max(1, opponent_speed // 4)
+            escape_chance = ((player_speed * 32) // opponent_speed_divisor) % 256 + 30 * (self.turn - 1)
             
             if escape_chance >= 256 or random.randint(0, 255) < escape_chance:
                 self.add_to_log("Got away safely!")
@@ -932,7 +957,7 @@ class Battle:
     def _handle_faint(self, fainted: Pokemon, victor: Pokemon):
         """Handle a Pokemon fainting."""
         # Award experience if player's Pokemon won
-        if victor in self.player.pokemon_team and self.battle_type != BattleType.WILD:
+        if victor in self.player.pokemon_team:
             base_exp = fainted.get_exp_yield()
             
             # Calculate experience
