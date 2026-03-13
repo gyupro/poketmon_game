@@ -1,0 +1,47 @@
+{
+    "id": "pokecenter_1",
+    "name": "Pokemon Center",
+    "width": 10,
+    "height": 8,
+    "music": "pokecenter.mp3",
+    "wild_pokemon": null,
+    "npcs": [
+        {
+            "name": "Nurse Joy",
+            "x": 7,
+            "y": 5,
+            "sprite": "nurse_joy",
+            "dialogue": [
+                "Welcome to the Pokemon Center!",
+                "Would you like me to heal your Pokemon?",
+                "...healing complete! Your Pokemon are fully healed!",
+                "We hope to see you again!"
+            ],
+            "facing": "down",
+            "movement_type": "static",
+            "is_healer": true
+        },
+        {
+            "name": "Trainer",
+            "x": 3,
+            "y": 8,
+            "sprite": "trainer",
+            "dialogue": [
+                "The PC is great for storing extra Pokemon!",
+                "You can store up to 30 Pokemon in each box."
+            ],
+            "facing": "up",
+            "movement_type": "static"
+        }
+    ],
+    "warps": [
+        {
+            "x": 5,
+            "y": 7,
+            "target_map": "pallet_town",
+            "target_x": 5,
+            "target_y": 8
+        }
+    ],
+    "description": "A place to heal your Pokemon"
+}

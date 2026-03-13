@@ -10,10 +10,48 @@
             "name": "Professor Oak",
             "x": 9,
             "y": 9,
+            "sprite": "prof_oak",
             "dialogue": [
                 "Hello there! Welcome to the world of Pokemon!",
-                "My name is Oak. People call me the Pokemon Professor!"
-            ]
+                "My name is Oak. People call me the Pokemon Professor!",
+                "This world is inhabited by creatures called Pokemon!",
+                "For some people, Pokemon are pets. Others use them for fights.",
+                "Myself... I study Pokemon as a profession."
+            ],
+            "facing": "down",
+            "movement_type": "wander",
+            "movement_range": 2,
+            "item_gift": "pokedex"
+        },
+        {
+            "name": "Gary",
+            "x": 14,
+            "y": 13,
+            "sprite": "rival",
+            "dialogue": [
+                "Hey! I'm Gary, Professor Oak's grandson!",
+                "I'm going to be the world's greatest Pokemon trainer!",
+                "You better not get in my way!"
+            ],
+            "facing": "down",
+            "is_trainer": true,
+            "trainer_data": {
+                "team": [
+                    {"species": "Eevee", "level": 5}
+                ],
+                "reward_money": 100
+            }
+        },
+        {
+            "name": "Young Boy",
+            "x": 6,
+            "y": 10,
+            "sprite": "youngster",
+            "dialogue": [
+                "Technology is amazing!",
+                "You can now store and recall Pokemon from PCs!"
+            ],
+            "facing": "down"
         }
     ],
     "warps": [

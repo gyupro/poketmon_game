@@ -29,18 +29,59 @@
     },
     "npcs": [
         {
-            "name": "Bug Catcher Rick",
-            "x": 10,
-            "y": 8,
+            "name": "Youngster Joey",
+            "x": 14,
+            "y": 20,
+            "sprite": "youngster",
             "dialogue": [
-                "Hey! You can't just walk past a trainer!",
-                "Let's battle!"
+                "Hey! You look like a Pokemon trainer!"
             ],
+            "facing": "left",
             "is_trainer": true,
-            "team": [
-                {"species": "Caterpie", "level": 4},
-                {"species": "Weedle", "level": 4}
-            ]
+            "trainer_data": {
+                "team": [
+                    {"species_id": 19, "level": 4}
+                ],
+                "reward_money": 80,
+                "sight_range": 3,
+                "defeated_flag": "trainer_youngster_joey",
+                "dialog_before": "Hey! You look like a Pokemon trainer!",
+                "dialog_after": "You're pretty good..."
+            }
+        },
+        {
+            "name": "Bug Catcher Rick",
+            "x": 19,
+            "y": 6,
+            "sprite": "bug_catcher",
+            "dialogue": [
+                "My bug Pokemon are the best!"
+            ],
+            "facing": "down",
+            "is_trainer": true,
+            "trainer_data": {
+                "team": [
+                    {"species_id": 10, "level": 3},
+                    {"species_id": 13, "level": 3}
+                ],
+                "reward_money": 60,
+                "sight_range": 4,
+                "defeated_flag": "trainer_bug_catcher_rick",
+                "dialog_before": "My bug Pokemon are the best!",
+                "dialog_after": "Aww, my bugs lost..."
+            }
+        },
+        {
+            "name": "Helpful Man",
+            "x": 9,
+            "y": 15,
+            "sprite": "gentleman",
+            "dialogue": [
+                "Are you going to Viridian City?",
+                "Here, take this Potion. It might help you!"
+            ],
+            "facing": "down",
+            "item_gift": "potion"
         }
     ],
     "warps": [

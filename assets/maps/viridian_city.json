@@ -30,59 +30,78 @@
     "npcs": [
         {
             "name": "Nurse Joy",
-            "x": 8,
-            "y": 14,
-            "role": "nurse_joy",
-            "action": "heal",
+            "x": 9,
+            "y": 15,
+            "sprite": "nurse_joy",
             "dialogue": [
                 "Welcome to the Pokemon Center! Let me heal your Pokemon.",
                 "Your Pokemon are all better now!"
-            ]
+            ],
+            "facing": "down",
+            "movement_type": "static",
+            "is_healer": true,
+            "action": "heal"
         },
         {
             "name": "Shopkeeper",
             "x": 28,
-            "y": 14,
-            "role": "shopkeeper",
-            "action": "shop",
+            "y": 15,
+            "sprite": "gentleman",
             "dialogue": [
                 "Welcome to the Poke Mart! What can I get for you?"
-            ]
+            ],
+            "facing": "down",
+            "movement_type": "static",
+            "action": "shop"
         },
         {
             "name": "Old Man",
             "x": 20,
             "y": 20,
+            "sprite": "gentleman",
             "dialogue": [
                 "Viridian City is known for its beautiful forest to the north.",
                 "But the path has been blocked lately..."
-            ]
+            ],
+            "facing": "down",
+            "movement_type": "wander",
+            "movement_range": 2
         },
         {
             "name": "Young Girl",
             "x": 14,
             "y": 25,
+            "sprite": "lass",
             "dialogue": [
                 "I love my Jigglypuff! It sings me to sleep every night!",
                 "Sometimes that's not a good thing though..."
-            ]
+            ],
+            "facing": "down",
+            "movement_type": "wander",
+            "movement_range": 1
         },
         {
             "name": "Fisherman",
             "x": 33,
-            "y": 30,
+            "y": 29,
+            "sprite": "hiker",
             "dialogue": [
                 "I've been fishing in this pond all day.",
                 "Haven't caught anything yet... maybe I need a better rod."
-            ]
+            ],
+            "facing": "down",
+            "movement_type": "static"
         },
         {
             "name": "Route Guard",
             "x": 20,
             "y": 3,
+            "sprite": "trainer",
             "dialogue": [
                 "The road ahead is closed for now. Come back later!"
-            ]
+            ],
+            "facing": "down",
+            "movement_type": "static"
         }
     ],
     "warps": [

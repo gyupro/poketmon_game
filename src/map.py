@@ -872,7 +872,13 @@ class Map:
 
 
 def create_sample_maps() -> Dict[str, Map]:
-    """Create sample maps for the game."""
+    """Create sample maps for the game.
+
+    NOTE: This function is still required because the JSON files in
+    assets/maps/ only contain metadata (NPCs, warps, wild_pokemon) and do
+    NOT include tile data.  All tile layouts are generated procedurally
+    here.  Once tile data is migrated to JSON this function can be removed.
+    """
     maps = {}
     
     # Starting Town - Now larger and more detailed

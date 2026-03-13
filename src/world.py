@@ -6,6 +6,8 @@ import pygame
 import random
 import math
 import time
+import json
+import os
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from .map import Map, TileType, Warp, MapObject, create_sample_maps
@@ -78,13 +80,20 @@ class World:
         # Day/night tint
         self.day_night_enabled = True
         
-        # NPCs for each map
-        self.npcs: Dict[str, List[NPC]] = {
-            "pallet_town": self._create_pallet_town_npcs(),
-            "route_1": self._create_route_1_npcs(),
-            "pokecenter_1": self._create_pokecenter_npcs(),
-            "viridian_city": self._create_viridian_city_npcs()
+        # NPCs for each map — load from JSON with hardcoded fallback
+        self.npcs: Dict[str, List[NPC]] = {}
+        fallback_creators = {
+            "pallet_town": self._create_pallet_town_npcs,
+            "route_1": self._create_route_1_npcs,
+            "pokecenter_1": self._create_pokecenter_npcs,
+            "viridian_city": self._create_viridian_city_npcs,
         }
+        for map_id, fallback_fn in fallback_creators.items():
+            loaded = self._load_npcs_from_json(map_id)
+            if loaded is not None:
+                self.npcs[map_id] = loaded
+            else:
+                self.npcs[map_id] = fallback_fn()
         
         # Interaction state
         self.current_dialogue: Optional[List[str]] = None
@@ -104,8 +113,54 @@ class World:
         # Pending trainer battle data (set when alert finishes, consumed by game.py)
         self.pending_trainer_battle: Optional[Dict] = None
         
+    def _load_npcs_from_json(self, map_id: str) -> Optional[List[NPC]]:
+        """Load NPC data from the map's JSON file.
+
+        Returns a list of NPC objects if the JSON file exists and contains
+        an ``npcs`` key, otherwise ``None`` so callers can fall back to
+        hardcoded creation methods.
+        """
+        maps_dir = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "assets", "maps",
+        )
+        json_path = os.path.join(maps_dir, f"{map_id}.json")
+        if not os.path.exists(json_path):
+            return None
+
+        try:
+            with open(json_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            return None
+
+        npc_list = data.get("npcs")
+        if npc_list is None:
+            return None
+
+        npcs: List[NPC] = []
+        for entry in npc_list:
+            npc = NPC(
+                name=entry.get("name", "NPC"),
+                x=entry.get("x", 0),
+                y=entry.get("y", 0),
+                sprite=entry.get("sprite", "trainer"),
+                dialogue=entry.get("dialogue", []),
+                facing_direction=entry.get("facing", "down"),
+                movement_type=entry.get("movement_type", "static"),
+                movement_range=entry.get("movement_range", 2),
+                is_trainer=entry.get("is_trainer", False),
+                trainer_data=entry.get("trainer_data", None),
+                item_gift=entry.get("item_gift", None),
+                is_healer=entry.get("is_healer", False),
+                action=entry.get("action", None),
+            )
+            npcs.append(npc)
+
+        return npcs
+
     def _create_pallet_town_npcs(self) -> List[NPC]:
-        """Create NPCs for Pallet Town."""
+        """Create NPCs for Pallet Town (hardcoded fallback)."""
         npcs = []
         
         # Professor Oak
