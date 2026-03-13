@@ -2,27 +2,27 @@
 
 A feature-rich Pokemon-style RPG game built with Python and Pygame, featuring turn-based battles, world exploration, and all the classic Pokemon mechanics.
 
-## Screenshots
+## Before / After
 
-### World Exploration
-![Pallet Town](assets/screenshots/world_npc.png)
-*Explore Pallet Town with textured tiles, animated NPCs, and interactive objects*
+### Before
+![Before - Battle Animation](Animation.gif)
 
-### Battle System
-![Battle Scene](assets/screenshots/battle_scene.png)
-*Turn-based battles with gradient sky, type badges, HP bars, and Pokemon sprites*
+### After
 
-### Pokemon Team
-![Pokemon Menu](assets/screenshots/pokemon_menu.png)
-*View your team with detailed stats, moves, and type information*
+| World Exploration | Battle System |
+|:-:|:-:|
+| ![Pallet Town](assets/screenshots/world_npc.png) | ![Battle Scene](assets/screenshots/battle_scene.png) |
+| *Textured tiles, animated NPCs, character sprites* | *Gradient sky, type badges, HP bars* |
 
-### Starter Selection
-![Starter Select](assets/screenshots/starter_select.png)
-*Choose your first Pokemon: Bulbasaur, Charmander, or Squirtle*
+| Pokemon Team | Pause Menu |
+|:-:|:-:|
+| ![Pokemon Menu](assets/screenshots/pokemon_menu.png) | ![Pause Menu](assets/screenshots/pause_menu.png) |
+| *Card layout with moves, stats, type badges* | *Dark-theme translucent overlay* |
 
-### Pause Menu
-![Pause Menu](assets/screenshots/pause_menu.png)
-*Modern dark-theme pause menu with translucent overlay*
+| Starter Selection |
+|:-:|
+| ![Starter Select](assets/screenshots/starter_select.png) |
+| *Choose Bulbasaur, Charmander, or Squirtle* |
 
 ## Features
 
