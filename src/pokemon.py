@@ -814,7 +814,37 @@ POKEMON_DATA = {
             {"level": 31, "name": "Worry Seed", "type": "grass", "category": "status", "power": 0, "accuracy": 100, "pp": 10},
             {"level": 33, "name": "Synthesis", "type": "grass", "category": "status", "power": 0, "accuracy": 100, "pp": 5, "effect": "heal"},
             {"level": 37, "name": "Seed Bomb", "type": "grass", "category": "physical", "power": 80, "accuracy": 100, "pp": 15}
-        ]
+        ],
+        "evolves_to": {"species_id": 2, "level": 16}
+    },
+    2: {  # Ivysaur
+        "id": 2,
+        "name": "Ivysaur",
+        "types": ["grass", "poison"],
+        "base_stats": {
+            "hp": 60,
+            "attack": 62,
+            "defense": 63,
+            "sp_attack": 80,
+            "sp_defense": 80,
+            "speed": 60
+        },
+        "abilities": [
+            {"name": "Overgrow", "description": "Powers up Grass-type moves when HP is low.", "effect_type": "low_hp_boost"}
+        ],
+        "experience_group": "medium_slow",
+        "learnset": [
+            {"level": 1, "name": "Tackle", "type": "normal", "category": "physical", "power": 40, "accuracy": 100, "pp": 35},
+            {"level": 1, "name": "Growl", "type": "normal", "category": "status", "power": 0, "accuracy": 100, "pp": 40, "effect": "lower_attack"},
+            {"level": 1, "name": "Vine Whip", "type": "grass", "category": "physical", "power": 45, "accuracy": 100, "pp": 25},
+            {"level": 7, "name": "Leech Seed", "type": "grass", "category": "status", "power": 0, "accuracy": 90, "pp": 10, "effect": "leech_seed"},
+            {"level": 13, "name": "Razor Leaf", "type": "grass", "category": "physical", "power": 55, "accuracy": 95, "pp": 25},
+            {"level": 15, "name": "Poison Powder", "type": "poison", "category": "status", "power": 0, "accuracy": 75, "pp": 35, "effect": "poison"},
+            {"level": 15, "name": "Sleep Powder", "type": "grass", "category": "status", "power": 0, "accuracy": 75, "pp": 15, "effect": "sleep"},
+            {"level": 20, "name": "Seed Bomb", "type": "grass", "category": "physical", "power": 80, "accuracy": 100, "pp": 15}
+        ],
+        "evolves_from": {"species_id": 1, "level": 16},
+        "evolves_to": {"species_id": 3, "level": 32}
     },
     4: {  # Charmander
         "id": 4,
@@ -846,7 +876,36 @@ POKEMON_DATA = {
             {"level": 32, "name": "Fire Spin", "type": "fire", "category": "special", "power": 35, "accuracy": 85, "pp": 15, "effect": "trap"},
             {"level": 36, "name": "Inferno", "type": "fire", "category": "special", "power": 100, "accuracy": 50, "pp": 5, "effect": "burn", "effect_chance": 100},
             {"level": 40, "name": "Flare Blitz", "type": "fire", "category": "physical", "power": 120, "accuracy": 100, "pp": 15, "effect": "recoil_burn"}
-        ]
+        ],
+        "evolves_to": {"species_id": 5, "level": 16}
+    },
+    5: {  # Charmeleon
+        "id": 5,
+        "name": "Charmeleon",
+        "types": ["fire"],
+        "base_stats": {
+            "hp": 58,
+            "attack": 64,
+            "defense": 58,
+            "sp_attack": 80,
+            "sp_defense": 65,
+            "speed": 80
+        },
+        "abilities": [
+            {"name": "Blaze", "description": "Powers up Fire-type moves when HP is low.", "effect_type": "low_hp_boost"}
+        ],
+        "experience_group": "medium_slow",
+        "learnset": [
+            {"level": 1, "name": "Scratch", "type": "normal", "category": "physical", "power": 40, "accuracy": 100, "pp": 35},
+            {"level": 1, "name": "Growl", "type": "normal", "category": "status", "power": 0, "accuracy": 100, "pp": 40, "effect": "lower_attack"},
+            {"level": 1, "name": "Ember", "type": "fire", "category": "special", "power": 40, "accuracy": 100, "pp": 25, "effect": "burn", "effect_chance": 10},
+            {"level": 7, "name": "Smokescreen", "type": "normal", "category": "status", "power": 0, "accuracy": 100, "pp": 20, "effect": "lower_accuracy"},
+            {"level": 13, "name": "Dragon Rage", "type": "dragon", "category": "special", "power": 40, "accuracy": 100, "pp": 10},
+            {"level": 17, "name": "Fire Fang", "type": "fire", "category": "physical", "power": 65, "accuracy": 95, "pp": 15, "effect": "burn", "effect_chance": 10},
+            {"level": 21, "name": "Slash", "type": "normal", "category": "physical", "power": 70, "accuracy": 100, "pp": 20}
+        ],
+        "evolves_from": {"species_id": 4, "level": 16},
+        "evolves_to": {"species_id": 6, "level": 36}
     },
     7: {  # Squirtle
         "id": 7,
@@ -880,7 +939,36 @@ POKEMON_DATA = {
             {"level": 30, "name": "Iron Defense", "type": "steel", "category": "status", "power": 0, "accuracy": 100, "pp": 15, "effect": "raise_defense_sharply"},
             {"level": 33, "name": "Hydro Pump", "type": "water", "category": "special", "power": 110, "accuracy": 80, "pp": 5},
             {"level": 36, "name": "Skull Bash", "type": "normal", "category": "physical", "power": 130, "accuracy": 100, "pp": 10}
-        ]
+        ],
+        "evolves_to": {"species_id": 8, "level": 16}
+    },
+    8: {  # Wartortle
+        "id": 8,
+        "name": "Wartortle",
+        "types": ["water"],
+        "base_stats": {
+            "hp": 59,
+            "attack": 63,
+            "defense": 80,
+            "sp_attack": 65,
+            "sp_defense": 80,
+            "speed": 58
+        },
+        "abilities": [
+            {"name": "Torrent", "description": "Powers up Water-type moves when HP is low.", "effect_type": "low_hp_boost"}
+        ],
+        "experience_group": "medium_slow",
+        "learnset": [
+            {"level": 1, "name": "Tackle", "type": "normal", "category": "physical", "power": 40, "accuracy": 100, "pp": 35},
+            {"level": 1, "name": "Tail Whip", "type": "normal", "category": "status", "power": 0, "accuracy": 100, "pp": 30, "effect": "lower_defense"},
+            {"level": 1, "name": "Water Gun", "type": "water", "category": "special", "power": 40, "accuracy": 100, "pp": 25},
+            {"level": 7, "name": "Withdraw", "type": "water", "category": "status", "power": 0, "accuracy": 100, "pp": 40, "effect": "raise_defense"},
+            {"level": 13, "name": "Bite", "type": "dark", "category": "physical", "power": 60, "accuracy": 100, "pp": 25, "effect": "flinch", "effect_chance": 30},
+            {"level": 16, "name": "Water Pulse", "type": "water", "category": "special", "power": 60, "accuracy": 100, "pp": 20, "effect": "confusion", "effect_chance": 20},
+            {"level": 20, "name": "Protect", "type": "normal", "category": "status", "power": 0, "accuracy": 100, "pp": 10, "priority": 4}
+        ],
+        "evolves_from": {"species_id": 7, "level": 16},
+        "evolves_to": {"species_id": 9, "level": 36}
     },
     25: {  # Pikachu
         "id": 25,
@@ -1286,8 +1374,11 @@ POKEMON_DATA = {
             {"level": 1, "name": "Tackle", "type": "normal", "category": "physical", "power": 40, "accuracy": 100, "pp": 35},
             {"level": 1, "name": "Tail Whip", "type": "normal", "category": "status", "power": 0, "accuracy": 100, "pp": 30, "effect": "lower_defense"},
             {"level": 4, "name": "Quick Attack", "type": "normal", "category": "physical", "power": 40, "accuracy": 100, "pp": 30, "priority": 1},
-            {"level": 7, "name": "Focus Energy", "type": "normal", "category": "status", "power": 0, "accuracy": 100, "pp": 30}
-        ]
+            {"level": 7, "name": "Focus Energy", "type": "normal", "category": "status", "power": 0, "accuracy": 100, "pp": 30},
+            {"level": 10, "name": "Bite", "type": "dark", "category": "physical", "power": 60, "accuracy": 100, "pp": 25, "effect": "flinch", "effect_chance": 30},
+            {"level": 13, "name": "Pursuit", "type": "dark", "category": "physical", "power": 40, "accuracy": 100, "pp": 20}
+        ],
+        "evolves_to": {"species_id": 20, "level": 20}
     },
     10: {  # Caterpie
         "id": 10,
