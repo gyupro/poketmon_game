@@ -28,7 +28,7 @@ def save_system(tmp_save_dir):
 @pytest.fixture
 def sample_data():
     """Provide a sample SaveData for testing."""
-    return SaveData.new_game(name="Ash", starter_id="bulbasaur")
+    return SaveData.new_game(name="Ash", starter_id=1)
 
 
 def test_save_creates_file(save_system, sample_data, tmp_save_dir):
@@ -46,7 +46,7 @@ def test_load_returns_saved_data(save_system, sample_data):
     assert loaded.player_name == "Ash"
     assert loaded.money == 3000
     assert len(loaded.team) == 1
-    assert loaded.team[0]["name"] == "bulbasaur"
+    assert loaded.team[0]["species_id"] == 1
     assert loaded.bag["potion"] == 5
     assert loaded.bag["pokeball"] == 5
 
@@ -76,13 +76,13 @@ def test_slot_has_save(save_system, sample_data):
 
 def test_save_validation_clamps_hp(save_system):
     """Loading a save with HP exceeding max_hp gets clamped."""
-    data = SaveData.new_game(name="Misty", starter_id="squirtle")
+    data = SaveData.new_game(name="Misty", starter_id=7)
     # Corrupt the HP to exceed max
-    data.team[0]["hp"] = 9999
+    data.team[0]["current_hp"] = 9999
     save_system.save(slot=1, data=data)
     loaded = save_system.load(slot=1)
     assert loaded is not None
-    assert loaded.team[0]["hp"] <= loaded.team[0]["max_hp"]
+    assert loaded.team[0]["current_hp"] <= loaded.team[0]["max_hp"]
 
 
 def test_atomic_write_no_partial(save_system, sample_data, tmp_save_dir):

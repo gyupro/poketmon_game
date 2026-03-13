@@ -33,14 +33,16 @@ class SaveData:
     last_healed_y: int = 10
 
     @classmethod
-    def new_game(cls, name: str, starter_id: str) -> "SaveData":
+    def new_game(cls, name: str, starter_id: int = 4) -> "SaveData":
         """Create a new game save with the chosen starter Pokemon."""
         starter = {
-            "name": starter_id,
+            "species_id": starter_id,
             "level": 5,
-            "hp": 20,
+            "current_hp": 20,
             "max_hp": 20,
             "moves": [],
+            "nickname": None,
+            "status": None,
         }
         return cls(
             player_name=name,
@@ -128,8 +130,8 @@ class SaveSystem:
             if max_hp < 1:
                 member["max_hp"] = 1
                 max_hp = 1
-            hp = member.get("hp", max_hp)
+            hp = member.get("current_hp", max_hp)
             if hp < 0:
-                member["hp"] = 0
+                member["current_hp"] = 0
             elif hp > max_hp:
-                member["hp"] = max_hp
+                member["current_hp"] = max_hp
