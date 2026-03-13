@@ -13,6 +13,7 @@ from .ui import UI, UIState
 from .items import get_item
 from .world import World
 from .encounter_effects import EncounterEffects, EncounterInfo
+from .save_system import SaveSystem, SaveData
 
 
 class GameState:
@@ -60,6 +61,13 @@ class Game:
         self.encounter_info = EncounterInfo()
         self.show_encounter_info = True  # Toggle with F1 key
         
+        # Enable "Continue" button if a save exists
+        if self.save_system.has_save(0):
+            continue_btn = self.ui.main_menu_buttons[1]
+            continue_btn.enabled = True
+            continue_btn.text_color = (255, 255, 255)
+            continue_btn.callback = lambda: self.load_game(0)
+
         self.show_loading_screen("Loading complete!")
         
         # Input handling
@@ -76,6 +84,17 @@ class Game:
         # Current NPC for interactions
         self.current_npc = None
         
+        # Save system
+        self.save_system = SaveSystem("saves")
+        self.current_slot = 0
+        self.play_time = 0.0
+
+        # Track map transition for auto-save after completion
+        self._was_transitioning = False
+
+        # Save confirmation message
+        self._save_message_timer = 0.0
+
         # Battle end timer
         self.battle_end_timer = 0.0
         self.battle_end_delay = 3.0  # 3 seconds delay after battle ends
@@ -233,6 +252,11 @@ class Game:
             elif key == pygame.K_F1:
                 # Toggle encounter info display
                 self.show_encounter_info = not self.show_encounter_info
+
+            elif key == pygame.K_F5:
+                # Quick save
+                self.save_game()
+                self._save_message_timer = 2.0
         
         elif self.game_state == GameState.BATTLE:
             # Battle input handled by UI battle menu
@@ -293,6 +317,10 @@ class Game:
     
     def update(self, dt):
         """Update game logic."""
+        # Track total play time
+        if self.game_started:
+            self.play_time += dt
+
         # Update UI animations
         self.ui.update(dt, self)
         
@@ -302,6 +330,10 @@ class Game:
         elif self.game_state == GameState.BATTLE:
             self.update_battle(dt)
         
+        # Update save message timer
+        if self._save_message_timer > 0:
+            self._save_message_timer -= dt
+
         # Update encounter effects
         self.encounter_effects.update(dt)
     
@@ -312,8 +344,14 @@ class Game:
 
         # Block player input during map transitions
         if self.world.map_transition_active:
+            self._was_transitioning = True
             self.world.update(dt, self.player)
             return
+
+        # Auto-save after map transition completes
+        if self._was_transitioning:
+            self._was_transitioning = False
+            self.save_game()
 
         # Handle player movement (grid-based)
         if not self.player.is_moving and not self.world.current_dialogue:
@@ -440,6 +478,80 @@ class Game:
         self.ui.state = UIState.GAME_WORLD
         self.battle_end_timer = 0.0  # Reset timer
     
+    def save_game(self):
+        """Save the current game state to the active slot."""
+        if not self.player:
+            return
+        player_data = self.player.to_save_data()
+        map_id = self.world.current_map_id if self.world else "pallet_town"
+        save_data = SaveData(
+            player_name=player_data["player_name"],
+            player_x=player_data["player_x"],
+            player_y=player_data["player_y"],
+            map_id=map_id,
+            facing=player_data["facing"],
+            team=player_data["team"],
+            bag=player_data["bag"],
+            money=player_data["money"],
+            badges=player_data["badges"],
+            play_time=self.play_time,
+            last_healed_map=player_data["last_healed_map"],
+            last_healed_x=player_data["last_healed_x"],
+            last_healed_y=player_data["last_healed_y"],
+        )
+        self.save_system.save_async(self.current_slot, save_data)
+
+    def load_game(self, slot: int = 0) -> bool:
+        """Load a saved game from the given slot. Returns True on success."""
+        save_data = self.save_system.load(slot)
+        if save_data is None:
+            return False
+
+        from .pokemon import create_pokemon_from_species
+
+        # Create world
+        self.world = World()
+
+        # Navigate to saved map if different from default
+        if save_data.map_id != self.world.current_map_id:
+            if save_data.map_id in self.world.maps:
+                self.world.current_map_id = save_data.map_id
+                self.world.current_map = self.world.maps[save_data.map_id]
+
+        # Create player at saved position
+        self.player = Player(save_data.player_name, save_data.player_x, save_data.player_y)
+        self.player.facing_direction = save_data.facing
+        self.player.money = save_data.money
+        self.player.badges = list(save_data.badges)
+        self.player.inventory = dict(save_data.bag)
+        self.player.last_healed_map = save_data.last_healed_map
+        self.player.last_healed_x = save_data.last_healed_x
+        self.player.last_healed_y = save_data.last_healed_y
+
+        # Restore team
+        for poke_data in save_data.team:
+            try:
+                pokemon = create_pokemon_from_species(poke_data["species_id"], poke_data["level"])
+                pokemon.current_hp = poke_data.get("current_hp", pokemon.stats["hp"])
+                if poke_data.get("nickname"):
+                    pokemon.nickname = poke_data["nickname"]
+                if poke_data.get("status"):
+                    from .pokemon import StatusCondition
+                    try:
+                        pokemon.status = StatusCondition(poke_data["status"])
+                    except ValueError:
+                        pass
+                self.player.add_pokemon(pokemon)
+            except ValueError:
+                continue
+
+        self.play_time = save_data.play_time
+        self.current_slot = slot
+        self.game_state = GameState.WORLD
+        self.ui.state = UIState.GAME_WORLD
+        self.game_started = True
+        return True
+
     def render(self):
         """Render the game."""
         # Clear screen
@@ -509,6 +621,20 @@ class Game:
                                  width=2, border_radius=8)
                 self.screen.blit(bg_surf, bg_rect.topleft)
                 self.screen.blit(text_surface, text_rect)
+            # Save confirmation message
+            if self._save_message_timer > 0:
+                save_font = pygame.font.Font(None, 28)
+                save_text = save_font.render("Game Saved!", True, (255, 255, 255))
+                save_rect = save_text.get_rect(topright=(self.SCREEN_WIDTH - 20, 20))
+                bg_rect = save_rect.inflate(16, 8)
+                bg_surf = pygame.Surface((bg_rect.width, bg_rect.height), pygame.SRCALPHA)
+                alpha = min(200, int(self._save_message_timer * 200))
+                pygame.draw.rect(bg_surf, (20, 20, 40, alpha),
+                                 (0, 0, bg_rect.width, bg_rect.height),
+                                 border_radius=6)
+                self.screen.blit(bg_surf, bg_rect.topleft)
+                save_text.set_alpha(min(255, int(self._save_message_timer * 255)))
+                self.screen.blit(save_text, save_rect)
         else:
             # Fallback rendering
             self.screen.fill((34, 139, 34))

@@ -30,7 +30,7 @@ class Player:
         
         self.pokemon_team: List[Pokemon] = []
         self.active_pokemon: Optional[Pokemon] = None
-        self.money = 1000
+        self.money = 3000
         self.badges = []
         self.inventory = {
             "pokeball": 5,
@@ -38,6 +38,11 @@ class Player:
             "super_potion": 1
         }
         
+        # Last healed location (for whiteout respawn)
+        self.last_healed_map = "pallet_town"
+        self.last_healed_x = 10
+        self.last_healed_y = 10
+
         # Movement state
         self.facing_direction = "down"
         self.is_moving = False
@@ -476,5 +481,32 @@ class Player:
                 return pokemon
         return None
     
+    def to_save_data(self) -> dict:
+        """Serialize player state for saving."""
+        team_data = []
+        for p in self.pokemon_team:
+            team_data.append({
+                "species_id": p.species_id,
+                "level": p.level,
+                "current_hp": p.current_hp,
+                "max_hp": p.stats["hp"],
+                "moves": [{"name": m.name, "pp": m.current_pp} for m in p.moves],
+                "nickname": getattr(p, 'nickname', None),
+                "status": p.status.value if p.status else None,
+            })
+        return {
+            "player_name": self.name,
+            "player_x": self.grid_x,
+            "player_y": self.grid_y,
+            "facing": self.facing_direction,
+            "team": team_data,
+            "money": self.money,
+            "badges": list(self.badges),
+            "bag": dict(self.inventory),
+            "last_healed_map": self.last_healed_map,
+            "last_healed_x": self.last_healed_x,
+            "last_healed_y": self.last_healed_y,
+        }
+
     def __str__(self):
         return f"Player {self.name} - Pokemon: {len(self.pokemon_team)}, Money: ${self.money}"
