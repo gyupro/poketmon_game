@@ -450,6 +450,14 @@ class Player:
             pygame.draw.circle(screen, (30, 30, 40), (head_cx + 5, head_cy + 2), 2)
             pygame.draw.circle(screen, (255, 255, 255), (head_cx + 4, head_cy + 1), 1)
     
+    def all_fainted(self) -> bool:
+        """Check if all Pokemon in the team have fainted."""
+        return len(self.pokemon_team) > 0 and all(p.current_hp <= 0 for p in self.pokemon_team)
+
+    def apply_whiteout_penalty(self) -> None:
+        """Apply the penalty for a white-out (lose half money)."""
+        self.money = self.money // 2
+
     def can_battle(self) -> bool:
         """Check if player has any Pokemon that can battle."""
         return any(not pokemon.is_fainted for pokemon in self.pokemon_team)

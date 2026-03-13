@@ -473,6 +473,28 @@ class Game:
     
     def end_battle(self):
         """End current battle and return to world."""
+        # Check for white-out (all Pokemon fainted)
+        if self.player and self.player.all_fainted():
+            # Heal all team Pokemon to full HP
+            for p in self.player.pokemon_team:
+                p.current_hp = p.stats["hp"]
+                p.is_fainted = False
+            # Apply money penalty
+            self.player.apply_whiteout_penalty()
+            # Teleport player to last healed location
+            if self.world:
+                target_map = self.player.last_healed_map
+                if target_map in self.world.maps:
+                    self.world.current_map_id = target_map
+                    self.world.current_map = self.world.maps[target_map]
+                self.player.grid_x = self.player.last_healed_x
+                self.player.grid_y = self.player.last_healed_y
+                self.player.pixel_x = self.player.last_healed_x * self.player.TILE_SIZE
+                self.player.pixel_y = self.player.last_healed_y * self.player.TILE_SIZE
+                self.player.target_x = self.player.pixel_x
+                self.player.target_y = self.player.pixel_y
+                self.player.is_moving = False
+
         self.current_battle = None
         self.game_state = GameState.WORLD
         self.ui.state = UIState.GAME_WORLD
