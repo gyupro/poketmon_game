@@ -4,10 +4,10 @@ A feature-rich Pokemon-style RPG game built with Python and Pygame, featuring tu
 
 ## Before / After
 
-### Before
+### Before (2025 Claude)
 ![Before - Battle Animation](Animation.gif)
 
-### After
+### After (2026 Claude)
 
 | World Exploration | Battle System |
 |:-:|:-:|
