@@ -1135,5 +1135,163 @@ def create_sample_maps() -> Dict[str, Map]:
     }))
     
     maps["pokecenter_1"] = pokecenter
-    
+
+    # Viridian City - 40x40 map with Pokemon Center and Poke Mart
+    viridian = Map("viridian_city", 40, 40, "Viridian City")
+
+    for y in range(40):
+        for x in range(40):
+            # Default to grass
+            viridian.set_tile(x, y, TileType.GRASS)
+
+            # Tree borders (leave gaps for south and north exits)
+            if x <= 1 or x >= 38:
+                viridian.set_tile(x, y, TileType.TREE)
+            elif y <= 1:
+                # North border - leave gap at x 18-22 for blocked north exit
+                if x < 17 or x > 23:
+                    viridian.set_tile(x, y, TileType.TREE)
+            elif y >= 38:
+                # South border - leave gap at x 18-22 for Route 1 exit
+                if x < 17 or x > 23:
+                    viridian.set_tile(x, y, TileType.TREE)
+
+            # Main east-west road
+            if 18 <= y <= 21 and 3 <= x <= 37:
+                viridian.set_tile(x, y, TileType.PATH)
+
+            # Main north-south road (center)
+            if 18 <= x <= 21:
+                if 2 <= y <= 38:
+                    viridian.set_tile(x, y, TileType.PATH)
+
+            # Path to Pokemon Center (left side)
+            if 5 <= x <= 17 and 18 <= y <= 21:
+                viridian.set_tile(x, y, TileType.PATH)
+            if 8 <= x <= 11 and 15 <= y <= 18:
+                viridian.set_tile(x, y, TileType.PATH)
+
+            # Path to Poke Mart (right side)
+            if 21 <= x <= 32 and 18 <= y <= 21:
+                viridian.set_tile(x, y, TileType.PATH)
+            if 27 <= x <= 30 and 15 <= y <= 18:
+                viridian.set_tile(x, y, TileType.PATH)
+
+            # Tall grass patches on eastern edge
+            if 32 <= x <= 36 and 6 <= y <= 12:
+                if random.random() > 0.2:
+                    viridian.set_tile(x, y, TileType.TALL_GRASS)
+            if 33 <= x <= 37 and 28 <= y <= 34:
+                if random.random() > 0.2:
+                    viridian.set_tile(x, y, TileType.TALL_GRASS)
+
+            # Tree clusters for natural feel
+            if (4 <= x <= 7 and 4 <= y <= 8):
+                if random.random() > 0.3:
+                    viridian.set_tile(x, y, TileType.TREE)
+            if (4 <= x <= 6 and 28 <= y <= 33):
+                if random.random() > 0.3:
+                    viridian.set_tile(x, y, TileType.TREE)
+
+    # Pokemon Center building (left side, ~8x6 area)
+    for by in range(10, 16):
+        for bx in range(5, 13):
+            if by == 10 or by == 15 or bx == 5 or bx == 12:
+                viridian.set_tile(bx, by, TileType.BUILDING_WALL)
+            else:
+                viridian.set_tile(bx, by, TileType.BUILDING_FLOOR)
+    viridian.set_tile(9, 15, TileType.DOOR)
+    # Roof decoration
+    for bx in range(6, 12):
+        viridian.set_tile(bx, 9, TileType.ROCK)
+
+    # Poke Mart building (right side, ~6x5 area)
+    for by in range(11, 16):
+        for bx in range(26, 32):
+            if by == 11 or by == 15 or bx == 26 or bx == 31:
+                viridian.set_tile(bx, by, TileType.BUILDING_WALL)
+            else:
+                viridian.set_tile(bx, by, TileType.BUILDING_FLOOR)
+    viridian.set_tile(28, 15, TileType.DOOR)
+    # Roof decoration
+    for bx in range(27, 31):
+        viridian.set_tile(bx, 10, TileType.ROCK)
+
+    # House 1 (upper left area)
+    for by in range(5, 10):
+        for bx in range(10, 16):
+            if by == 5 or by == 9 or bx == 10 or bx == 15:
+                viridian.set_tile(bx, by, TileType.BUILDING_WALL)
+            else:
+                viridian.set_tile(bx, by, TileType.BUILDING_FLOOR)
+    viridian.set_tile(12, 9, TileType.DOOR)
+
+    # House 2 (lower left area)
+    for by in range(25, 30):
+        for bx in range(8, 14):
+            if by == 25 or by == 29 or bx == 8 or bx == 13:
+                viridian.set_tile(bx, by, TileType.BUILDING_WALL)
+            else:
+                viridian.set_tile(bx, by, TileType.BUILDING_FLOOR)
+    viridian.set_tile(10, 29, TileType.DOOR)
+
+    # House 3 (right side, lower)
+    for by in range(24, 29):
+        for bx in range(24, 30):
+            if by == 24 or by == 28 or bx == 24 or bx == 29:
+                viridian.set_tile(bx, by, TileType.BUILDING_WALL)
+            else:
+                viridian.set_tile(bx, by, TileType.BUILDING_FLOOR)
+    viridian.set_tile(26, 28, TileType.DOOR)
+
+    # Small pond / water feature (south-east area)
+    for by in range(30, 33):
+        for bx in range(30, 34):
+            viridian.set_tile(bx, by, TileType.WATER)
+
+    # Flower beds around town
+    flower_spots_v = [
+        (7, 17), (8, 17), (12, 17), (13, 17),
+        (27, 17), (28, 17), (30, 17),
+        (15, 23), (16, 23), (22, 23), (23, 23),
+    ]
+    for fx, fy in flower_spots_v:
+        viridian.set_tile(fx, fy, TileType.FLOWER)
+
+    # Signs
+    viridian.set_tile(8, 16, TileType.SIGN)
+    viridian.add_object(MapObject(8, 16, "sign", {
+        "text": "Viridian City Pokemon Center\nHeal your Pokemon for free!"
+    }))
+
+    viridian.set_tile(28, 16, TileType.SIGN)
+    viridian.add_object(MapObject(28, 16, "sign", {
+        "text": "Viridian City Poke Mart\nFor all your Pokemon needs!"
+    }))
+
+    viridian.set_tile(20, 22, TileType.SIGN)
+    viridian.add_object(MapObject(20, 22, "sign", {
+        "text": "Viridian City\nThe Eternally Green Paradise"
+    }))
+
+    viridian.set_tile(20, 3, TileType.SIGN)
+    viridian.add_object(MapObject(20, 3, "sign", {
+        "text": "Route 2 - North\n(Currently closed)"
+    }))
+
+    # Warps - south exit to Route 1
+    for wx in range(18, 23):
+        viridian.add_warp(Warp(wx, 39, "route_1", wx, 1))
+
+    # Wild pokemon data for the tall grass patches
+    viridian.wild_pokemon_data = {
+        "grass": [
+            {"species": "Pidgey", "levels": [3, 6]},
+            {"species": "Rattata", "levels": [3, 5]},
+            {"species": "Nidoran", "levels": [4, 6]},
+        ]
+    }
+
+    maps["viridian_city"] = viridian
+
     return maps

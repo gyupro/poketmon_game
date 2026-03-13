@@ -1,0 +1,98 @@
+{
+    "id": "viridian_city",
+    "name": "Viridian City",
+    "width": 40,
+    "height": 40,
+    "music": "viridian_city.mp3",
+    "wild_pokemon": {
+        "encounter_rate": 8,
+        "pokemon": [
+            {
+                "species": "Pidgey",
+                "min_level": 3,
+                "max_level": 6,
+                "encounter_rate": 40
+            },
+            {
+                "species": "Rattata",
+                "min_level": 3,
+                "max_level": 5,
+                "encounter_rate": 35
+            },
+            {
+                "species": "Nidoran",
+                "min_level": 4,
+                "max_level": 6,
+                "encounter_rate": 25
+            }
+        ]
+    },
+    "npcs": [
+        {
+            "name": "Nurse Joy",
+            "x": 8,
+            "y": 14,
+            "role": "nurse_joy",
+            "action": "heal",
+            "dialogue": [
+                "Welcome to the Pokemon Center! Let me heal your Pokemon.",
+                "Your Pokemon are all better now!"
+            ]
+        },
+        {
+            "name": "Shopkeeper",
+            "x": 28,
+            "y": 14,
+            "role": "shopkeeper",
+            "action": "shop",
+            "dialogue": [
+                "Welcome to the Poke Mart! What can I get for you?"
+            ]
+        },
+        {
+            "name": "Old Man",
+            "x": 20,
+            "y": 20,
+            "dialogue": [
+                "Viridian City is known for its beautiful forest to the north.",
+                "But the path has been blocked lately..."
+            ]
+        },
+        {
+            "name": "Young Girl",
+            "x": 14,
+            "y": 25,
+            "dialogue": [
+                "I love my Jigglypuff! It sings me to sleep every night!",
+                "Sometimes that's not a good thing though..."
+            ]
+        },
+        {
+            "name": "Fisherman",
+            "x": 33,
+            "y": 30,
+            "dialogue": [
+                "I've been fishing in this pond all day.",
+                "Haven't caught anything yet... maybe I need a better rod."
+            ]
+        },
+        {
+            "name": "Route Guard",
+            "x": 20,
+            "y": 3,
+            "dialogue": [
+                "The road ahead is closed for now. Come back later!"
+            ]
+        }
+    ],
+    "warps": [
+        {
+            "x": 20,
+            "y": 39,
+            "target_map": "route_1",
+            "target_x": 20,
+            "target_y": 1
+        }
+    ],
+    "description": "A beautiful city with a Pokemon Center and Poke Mart"
+}

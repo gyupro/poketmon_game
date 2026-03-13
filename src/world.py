@@ -31,6 +31,7 @@ class NPC:
     item_gift: Optional[str] = None
     given_item: bool = False
     is_healer: bool = False  # For Pokemon Center healing
+    action: Optional[str] = None  # "heal", "shop", or None
 
     def __post_init__(self):
         # Store original position for wander range checks
@@ -81,7 +82,8 @@ class World:
         self.npcs: Dict[str, List[NPC]] = {
             "pallet_town": self._create_pallet_town_npcs(),
             "route_1": self._create_route_1_npcs(),
-            "pokecenter_1": self._create_pokecenter_npcs()
+            "pokecenter_1": self._create_pokecenter_npcs(),
+            "viridian_city": self._create_viridian_city_npcs()
         }
         
         # Interaction state
@@ -226,6 +228,96 @@ class World:
         
         return npcs
     
+    def _create_viridian_city_npcs(self) -> List[NPC]:
+        """Create NPCs for Viridian City."""
+        npcs = []
+
+        # Nurse Joy at Pokemon Center
+        nurse_joy = NPC(
+            name="Nurse Joy",
+            x=9, y=15,
+            sprite="nurse_joy",
+            dialogue=[
+                "Welcome to the Pokemon Center! Let me heal your Pokemon.",
+                "Your Pokemon are all better now!"
+            ],
+            facing_direction="down",
+            movement_type="static",
+            is_healer=True,
+            action="heal"
+        )
+        npcs.append(nurse_joy)
+
+        # Shopkeeper at Poke Mart
+        shopkeeper = NPC(
+            name="Shopkeeper",
+            x=28, y=15,
+            sprite="gentleman",
+            dialogue=[
+                "Welcome to the Poke Mart! What can I get for you?"
+            ],
+            facing_direction="down",
+            movement_type="static",
+            action="shop"
+        )
+        npcs.append(shopkeeper)
+
+        # Old Man townsperson
+        old_man = NPC(
+            name="Old Man",
+            x=20, y=20,
+            sprite="gentleman",
+            dialogue=[
+                "Viridian City is known for its beautiful forest to the north.",
+                "But the path has been blocked lately..."
+            ],
+            movement_type="wander",
+            movement_range=2
+        )
+        npcs.append(old_man)
+
+        # Young Girl townsperson
+        young_girl = NPC(
+            name="Young Girl",
+            x=14, y=25,
+            sprite="lass",
+            dialogue=[
+                "I love my Jigglypuff! It sings me to sleep every night!",
+                "Sometimes that's not a good thing though..."
+            ],
+            movement_type="wander",
+            movement_range=1
+        )
+        npcs.append(young_girl)
+
+        # Fisherman near the pond
+        fisherman = NPC(
+            name="Fisherman",
+            x=33, y=29,
+            sprite="hiker",
+            dialogue=[
+                "I've been fishing in this pond all day.",
+                "Haven't caught anything yet... maybe I need a better rod."
+            ],
+            movement_type="static"
+        )
+        npcs.append(fisherman)
+
+        # Route Guard blocking north exit
+        route_guard = NPC(
+            name="Route Guard",
+            x=20, y=3,
+            sprite="trainer",
+            dialogue=[
+                "The road ahead is closed for now. Come back later!"
+            ],
+            facing_direction="down",
+            movement_type="static"
+        )
+        npcs.append(route_guard)
+
+        return npcs
+
     def update(self, dt: float, player: Player):
         """Update world state."""
         # Update map transition effect
@@ -447,7 +539,14 @@ class World:
                     npc.facing_direction = "right"
                 elif player.facing_direction == "right":
                     npc.facing_direction = "left"
-                
+
+                # Handle special NPC actions
+                if npc.action == "heal" or npc.is_healer:
+                    self._heal_player_pokemon(player)
+                elif npc.action == "shop":
+                    # Shop UI will be wired later; show dialogue only
+                    pass
+
                 return {
                     "type": "npc",
                     "npc": npc,
@@ -469,6 +568,18 @@ class World:
         
         return None
     
+    def _heal_player_pokemon(self, player: Player):
+        """Heal all Pokemon in the player's team to full HP."""
+        for pokemon in player.pokemon_team:
+            pokemon.current_hp = pokemon.stats["hp"]
+            pokemon.is_fainted = False
+            pokemon.status_effect = None
+        # Update heal checkpoint
+        player.last_healed_map = self.current_map_id
+        grid_x, grid_y = player.get_grid_position()
+        player.last_healed_x = grid_x
+        player.last_healed_y = grid_y
+
     def advance_dialogue(self) -> Optional[str]:
         """Advance to next dialogue line."""
         if not self.current_dialogue:
