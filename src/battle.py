@@ -148,11 +148,11 @@ class Battle:
             self.add_to_log(f"{self.opponent.name} sent out {self.opponent_pokemon.species_name}!")
         
         self.add_to_log(f"Go! {self.player_pokemon.nickname}!")
-        self.add_to_log("")
     
     def add_to_log(self, message: str):
         """Add message to battle log."""
-        self.battle_log.append(message)
+        if message.strip():
+            self.battle_log.append(message)
     
     def get_valid_actions(self) -> List[BattleAction]:
         """Get list of valid actions for current state."""

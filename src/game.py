@@ -3,6 +3,7 @@ Main Game Logic - Core game loop and state management
 """
 
 import pygame
+import math
 import random
 from typing import Optional
 from .player import Player
@@ -513,95 +514,167 @@ class Game:
             self.screen.fill((34, 139, 34))
     
     def render_starter_selection(self):
-        """Render the starter Pokemon selection screen."""
-        # Background
-        self.screen.fill((248, 248, 248))
-        
-        # Title
-        title_font = pygame.font.Font(None, 48)
-        title_text = title_font.render("Choose Your Starter Pokemon!", True, (0, 0, 0))
-        title_rect = title_text.get_rect(center=(self.SCREEN_WIDTH // 2, 80))
+        """Render the starter Pokemon selection screen with dark theme."""
+        sw, sh = self.SCREEN_WIDTH, self.SCREEN_HEIGHT
+
+        # Dark gradient background matching main menu theme
+        for y in range(sh):
+            t = y / max(sh - 1, 1)
+            r = int(10 + (25 - 10) * t)
+            g = int(10 + (20 - 10) * t)
+            b = int(30 + (50 - 30) * t)
+            pygame.draw.line(self.screen, (r, g, b), (0, y), (sw, y))
+
+        # Subtle decorative particles (static dots for ambience)
+        tick = pygame.time.get_ticks()
+        for i in range(30):
+            px = (i * 137 + 50) % sw
+            py = (i * 97 + 30) % sh
+            alpha = int(40 + 30 * math.sin(tick * 0.001 + i))
+            dot = pygame.Surface((4, 4), pygame.SRCALPHA)
+            pygame.draw.circle(dot, (56, 128, 255, alpha), (2, 2), 2)
+            self.screen.blit(dot, (px, py))
+
+        # Title with accent underline
+        title_font = pygame.font.Font(None, 52)
+        title_text = title_font.render("Choose Your Starter Pokemon", True, (240, 240, 250))
+        title_rect = title_text.get_rect(center=(sw // 2, 100))
         self.screen.blit(title_text, title_rect)
-        
+
+        # Accent line under title
+        line_w = 260
+        line_y = title_rect.bottom + 8
+        pygame.draw.line(self.screen, (56, 128, 255),
+                         (sw // 2 - line_w // 2, line_y),
+                         (sw // 2 + line_w // 2, line_y), 2)
+
+        # Subtitle
+        sub_font = pygame.font.Font(None, 26)
+        sub_text = sub_font.render("Professor Oak has three Pokemon for you", True, (170, 170, 190))
+        sub_rect = sub_text.get_rect(center=(sw // 2, line_y + 22))
+        self.screen.blit(sub_text, sub_rect)
+
         # Starter options
         starters = [
             ("Bulbasaur", 1, (120, 200, 80), "Grass/Poison"),
             ("Charmander", 4, (240, 128, 48), "Fire"),
-            ("Squirtle", 7, (104, 144, 240), "Water")
+            ("Squirtle", 7, (104, 144, 240), "Water"),
         ]
-        
-        card_width = 200
-        card_height = 250
-        spacing = 50
-        total_width = (card_width * 3) + (spacing * 2)
-        start_x = (self.SCREEN_WIDTH - total_width) // 2
-        start_y = 150
-        
+
+        card_width = 220
+        card_height = 290
+        spacing = 40
+        total_width = card_width * 3 + spacing * 2
+        start_x = (sw - total_width) // 2
+        # Vertically center cards between subtitle and instructions area
+        start_y = (sh - card_height) // 2 + 20
+
         for i, (name, species_id, color, type_text) in enumerate(starters):
-            x = start_x + (i * (card_width + spacing))
-            
-            # Card background
+            x = start_x + i * (card_width + spacing)
+            is_selected = (i == self.selected_starter)
+
             card_rect = pygame.Rect(x, start_y, card_width, card_height)
-            card_color = (255, 255, 255)
-            if i == self.selected_starter:
-                card_color = (255, 255, 200)
-                pygame.draw.rect(self.screen, (255, 215, 0), card_rect, 5)
+
+            # Shadow
+            shadow = pygame.Surface((card_width + 8, card_height + 8), pygame.SRCALPHA)
+            pygame.draw.rect(shadow, (0, 0, 0, 50),
+                             (4, 4, card_width, card_height), border_radius=14)
+            self.screen.blit(shadow, (x - 4, start_y - 4))
+
+            # Card surface
+            card_surf = pygame.Surface((card_width, card_height), pygame.SRCALPHA)
+
+            # Card background - dark themed
+            bg_color = (45, 45, 68) if not is_selected else (55, 55, 85)
+            pygame.draw.rect(card_surf, bg_color,
+                             (0, 0, card_width, card_height), border_radius=14)
+
+            # Border: type-colored glow if selected, subtle otherwise
+            if is_selected:
+                # Outer glow
+                glow_surf = pygame.Surface((card_width + 12, card_height + 12), pygame.SRCALPHA)
+                pulse = int(160 + 60 * math.sin(tick * 0.004))
+                pygame.draw.rect(glow_surf, (*color, pulse),
+                                 (0, 0, card_width + 12, card_height + 12),
+                                 width=3, border_radius=17)
+                self.screen.blit(glow_surf, (x - 6, start_y - 6))
+                # Inner accent border
+                pygame.draw.rect(card_surf, (*color, 220),
+                                 (0, 0, card_width, card_height),
+                                 width=2, border_radius=14)
             else:
-                pygame.draw.rect(self.screen, (200, 200, 200), card_rect, 3)
-            
-            pygame.draw.rect(self.screen, card_color, card_rect)
-            pygame.draw.rect(self.screen, (100, 100, 100), card_rect, 2)
-            
+                pygame.draw.rect(card_surf, (70, 70, 100, 140),
+                                 (0, 0, card_width, card_height),
+                                 width=1, border_radius=14)
+
+            # Sprite area with subtle background circle
+            sprite_cx = card_width // 2
+            sprite_cy = 80
+            pygame.draw.circle(card_surf, (*color, 30), (sprite_cx, sprite_cy), 55)
+
             # Pokemon sprite
-            sprite_rect = pygame.Rect(x + 50, start_y + 20, 100, 100)
             sprite_filename = f"{species_id}_normal.png"
             sprite_path = f"assets/sprites/{sprite_filename}"
-            
-            # Try to load and display the sprite
+            sprite_size = 110
+
             try:
                 sprite = pygame.image.load(sprite_path)
-                sprite = pygame.transform.scale(sprite, (100, 100))
-                self.screen.blit(sprite, sprite_rect)
-            except:
-                # Fallback to colored rectangle if sprite not found
-                pygame.draw.rect(self.screen, color, sprite_rect)
-                pygame.draw.rect(self.screen, (0, 0, 0), sprite_rect, 2)
-                
-                # Draw Pokemon name in the sprite area as fallback
-                fallback_font = pygame.font.Font(None, 16)
-                fallback_text = fallback_font.render(name, True, (255, 255, 255))
-                fallback_rect = fallback_text.get_rect(center=sprite_rect.center)
-                self.screen.blit(fallback_text, fallback_rect)
-            
+                sprite = pygame.transform.scale(sprite, (sprite_size, sprite_size))
+                card_surf.blit(sprite, (sprite_cx - sprite_size // 2,
+                                        sprite_cy - sprite_size // 2))
+            except Exception:
+                # Fallback colored circle
+                pygame.draw.circle(card_surf, color, (sprite_cx, sprite_cy), 45)
+                fb_font = pygame.font.Font(None, 18)
+                fb = fb_font.render(name, True, (255, 255, 255))
+                card_surf.blit(fb, fb.get_rect(center=(sprite_cx, sprite_cy)))
+
             # Pokemon name
-            font = pygame.font.Font(None, 28)
-            name_text = font.render(name, True, (0, 0, 0))
-            name_rect = name_text.get_rect(center=(x + card_width // 2, start_y + 140))
-            self.screen.blit(name_text, name_rect)
-            
-            # Type
-            type_font = pygame.font.Font(None, 22)
-            type_text_surface = type_font.render(type_text, True, (64, 64, 64))
-            type_rect = type_text_surface.get_rect(center=(x + card_width // 2, start_y + 170))
-            self.screen.blit(type_text_surface, type_rect)
-            
+            name_font = pygame.font.Font(None, 30)
+            ns = name_font.render(name, True, (240, 240, 250))
+            card_surf.blit(ns, ns.get_rect(center=(card_width // 2, 155)))
+
+            # Type badge
+            badge_font = pygame.font.Font(None, 20)
+            badge_text = badge_font.render(type_text.upper(), True, (255, 255, 255))
+            bw = badge_text.get_width() + 16
+            bh = badge_text.get_height() + 6
+            bx = (card_width - bw) // 2
+            by = 175
+            pygame.draw.rect(card_surf, (*color, 200), (bx, by, bw, bh), border_radius=8)
+            card_surf.blit(badge_text, badge_text.get_rect(center=(card_width // 2, by + bh // 2)))
+
             # Level
-            level_text = type_font.render("Level 5", True, (64, 64, 64))
-            level_rect = level_text.get_rect(center=(x + card_width // 2, start_y + 195))
-            self.screen.blit(level_text, level_rect)
-        
-        # Instructions
+            lv_font = pygame.font.Font(None, 22)
+            lv = lv_font.render("Level 5", True, (170, 170, 190))
+            card_surf.blit(lv, lv.get_rect(center=(card_width // 2, 210)))
+
+            # Selection indicator arrow
+            if is_selected:
+                arrow_y = card_height - 30
+                arrow_bounce = int(4 * math.sin(tick * 0.005))
+                indicator = pygame.font.Font(None, 28).render("▲ SELECTED", True, color)
+                card_surf.blit(indicator,
+                               indicator.get_rect(center=(card_width // 2, arrow_y + arrow_bounce)))
+
+            self.screen.blit(card_surf, (x, start_y))
+
+        # Instructions - styled pill at bottom
+        instructions_text = "◀ LEFT / RIGHT ▶  to select   •   ENTER to confirm   •   ESC to go back"
         inst_font = pygame.font.Font(None, 24)
-        instructions = [
-            "Use LEFT/RIGHT arrows to select",
-            "Press ENTER to confirm your choice",
-            "Press ESC to return to main menu"
-        ]
-        
-        for i, instruction in enumerate(instructions):
-            inst_text = inst_font.render(instruction, True, (64, 64, 64))
-            inst_rect = inst_text.get_rect(center=(self.SCREEN_WIDTH // 2, 450 + (i * 30)))
-            self.screen.blit(inst_text, inst_rect)
+        inst_surf = inst_font.render(instructions_text, True, (200, 200, 220))
+        inst_rect = inst_surf.get_rect(center=(sw // 2, sh - 50))
+
+        # Background pill
+        pill_rect = inst_rect.inflate(40, 16)
+        pill = pygame.Surface((pill_rect.width, pill_rect.height), pygame.SRCALPHA)
+        pygame.draw.rect(pill, (20, 20, 40, 180),
+                         (0, 0, pill_rect.width, pill_rect.height), border_radius=12)
+        pygame.draw.rect(pill, (70, 70, 100, 120),
+                         (0, 0, pill_rect.width, pill_rect.height),
+                         width=1, border_radius=12)
+        self.screen.blit(pill, pill_rect.topleft)
+        self.screen.blit(inst_surf, inst_rect)
     
     def show_loading_screen(self, message="Loading..."):
         """Show a loading screen with a message."""

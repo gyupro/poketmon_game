@@ -259,34 +259,46 @@ class EncounterInfo:
         
     def render(self, screen: pygame.Surface, encounter_data: dict, x: int = 10, y: int = 10):
         """Render encounter information HUD."""
-        # Background
-        info_height = 80
-        info_width = 200
-        bg_rect = pygame.Rect(x, y, info_width, info_height)
-        pygame.draw.rect(screen, (0, 0, 0), bg_rect)
-        pygame.draw.rect(screen, (255, 255, 255), bg_rect, 2)
-        
-        # Area name
-        area_text = self.font.render(f"Area: {encounter_data.get('area', 'Unknown')}", 
-                                   True, (255, 255, 255))
-        screen.blit(area_text, (x + 10, y + 5))
-        
-        # Chain info
+        # Determine content height dynamically
         chain_species = encounter_data.get('chain_species')
         chain_count = encounter_data.get('chain_count', 0)
-        
-        if chain_species:
-            chain_text = self.small_font.render(f"Chain: #{chain_species} x{chain_count}", 
-                                              True, (255, 255, 0))
-            screen.blit(chain_text, (x + 10, y + 30))
-        else:
-            no_chain_text = self.small_font.render("No active chain", 
-                                                 True, (150, 150, 150))
-            screen.blit(no_chain_text, (x + 10, y + 30))
-            
-        # Repel status
         repel_steps = encounter_data.get('repel_steps', 0)
+
+        lines = 1  # area name always shown
+        if chain_species:
+            lines += 1
         if repel_steps > 0:
-            repel_text = self.small_font.render(f"Repel: {repel_steps} steps", 
+            lines += 1
+
+        info_width = 200
+        info_height = 10 + lines * 22 + 6
+        bg_rect = pygame.Rect(x, y, info_width, info_height)
+
+        # Semi-transparent rounded background
+        bg_surf = pygame.Surface((info_width, info_height), pygame.SRCALPHA)
+        pygame.draw.rect(bg_surf, (20, 20, 40, 180),
+                         (0, 0, info_width, info_height), border_radius=8)
+        pygame.draw.rect(bg_surf, (70, 70, 100, 170),
+                         (0, 0, info_width, info_height), width=1, border_radius=8)
+        screen.blit(bg_surf, bg_rect.topleft)
+
+        # Area name - format from map_id (e.g. "pallet_town" -> "Pallet Town")
+        raw_area = encounter_data.get('area', 'Unknown')
+        display_area = raw_area.replace('_', ' ').title()
+        area_text = self.font.render(display_area, True, (240, 240, 250))
+        screen.blit(area_text, (x + 10, y + 6))
+
+        cur_y = y + 28
+
+        # Chain info (only shown when an active chain exists)
+        if chain_species:
+            chain_text = self.small_font.render(f"Chain: #{chain_species} x{chain_count}",
+                                              True, (255, 255, 0))
+            screen.blit(chain_text, (x + 10, cur_y))
+            cur_y += 22
+
+        # Repel status
+        if repel_steps > 0:
+            repel_text = self.small_font.render(f"Repel: {repel_steps} steps",
                                               True, (100, 200, 255))
-            screen.blit(repel_text, (x + 10, y + 50))
+            screen.blit(repel_text, (x + 10, cur_y))

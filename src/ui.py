@@ -381,14 +381,18 @@ class HealthBar:
 
     def __init__(self, x: int, y: int, width: int, height: int):
         self.rect = pygame.Rect(x, y, width, height)
-        self.current_hp = 100
-        self.max_hp = 100
-        self.display_hp = 100.0
+        self.current_hp = 0
+        self.max_hp = 1
+        self.display_hp = 0.0
         self.animation_speed = 120
+        self._initialized = False
 
     def set_hp(self, current: int, maximum: int):
         self.current_hp = max(0, current)
         self.max_hp = max(1, maximum)
+        if not self._initialized:
+            self.display_hp = float(self.current_hp)
+            self._initialized = True
 
     def update(self, dt: float):
         if self.display_hp != self.current_hp:
@@ -399,7 +403,7 @@ class HealthBar:
                 self.display_hp = min(self.current_hp, self.display_hp + change)
 
     def draw(self, screen: pygame.Surface, show_text: bool = True):
-        dpct = self.display_hp / self.max_hp if self.max_hp else 0
+        dpct = min(1.0, self.display_hp / self.max_hp) if self.max_hp else 0
 
         # Use display_hp for color so the color smoothly transitions with the bar
         if dpct > 0.5:
@@ -443,7 +447,7 @@ class HealthBar:
 
         if show_text:
             font = pygame.font.Font(None, 16)
-            hp_text = f"{int(self.display_hp)}/{self.max_hp}"
+            hp_text = f"{self.current_hp}/{self.max_hp}"
             # Shadow for readability
             shadow_s = font.render(hp_text, True, (0, 0, 0))
             screen.blit(shadow_s, (self.rect.right + 7, self.rect.centery - shadow_s.get_height() // 2 + 1))
@@ -474,7 +478,7 @@ class ExperienceBar:
                 self.display_exp = max(self.current_exp, self.display_exp - change)
 
     def draw(self, screen: pygame.Surface):
-        dpct = self.display_exp / self.needed_exp if self.needed_exp else 0
+        dpct = min(1.0, self.display_exp / self.needed_exp) if self.needed_exp else 0
         _draw_rounded_rect(screen, (40, 40, 55), self.rect, radius=self.rect.height // 2)
         if dpct > 0:
             fill_w = max(self.rect.height, int(self.rect.width * dpct))
@@ -562,12 +566,14 @@ class PokemonInfoPanel:
             _draw_rounded_rect(screen, sc, sr, radius=4)
             screen.blit(ss, (sr[0] + 5, sr[1] + 1))
 
-        # HP label
+        # HP label (positioned to the left of the HP bar)
         hp_label = font_tiny.render("HP", True, Colors.TEXT_SECONDARY)
-        screen.blit(hp_label, (self.rect.x + 14, self.rect.y + self.rect.height - 38))
+        screen.blit(hp_label, (self.rect.x + 14, self.health_bar.rect.y - 12))
 
         self.health_bar.draw(screen, show_text=True)
         if self.is_player and self.exp_bar:
+            exp_label = font_tiny.render("EXP", True, Colors.TEXT_SECONDARY)
+            screen.blit(exp_label, (self.rect.x + 14, self.exp_bar.rect.y - 1))
             self.exp_bar.draw(screen)
 
 
@@ -901,8 +907,10 @@ class UI:
 
     def show_location(self, name: str):
         """Show a location banner that fades in and out."""
-        if name != self._location_name:
-            self._location_name = name
+        # Format raw map IDs into readable names (e.g. "pallet_town" -> "Pallet Town")
+        display_name = name.replace('_', ' ').title()
+        if display_name != self._location_name:
+            self._location_name = display_name
             self._location_alpha = 0.0
             self._location_timer = 3.0  # seconds to display
 
@@ -1552,34 +1560,38 @@ class UI:
         # -- Top-right: lead Pokemon mini info --
         if player.active_pokemon:
             p = player.active_pokemon
-            mini_w = 180
-            mini_h = 50
+            mini_w = 220
+            mini_h = 62
             mx = self.screen_width - mini_w - 12
             my = 12
 
             mini_surf = pygame.Surface((mini_w, mini_h), pygame.SRCALPHA)
-            pygame.draw.rect(mini_surf, (20, 20, 40, 170),
+            pygame.draw.rect(mini_surf, (20, 20, 40, 185),
                              (0, 0, mini_w, mini_h), border_radius=10)
-            pygame.draw.rect(mini_surf, (*Colors.CARD_BORDER, 170),
+            pygame.draw.rect(mini_surf, (*Colors.CARD_BORDER, 185),
                              (0, 0, mini_w, mini_h), width=1, border_radius=10)
 
-            # Pokemon name
-            nf = pygame.font.Font(None, 18)
-            ns = nf.render(f"{p.nickname} Lv.{p.level}", True, Colors.TEXT_PRIMARY)
-            mini_surf.blit(ns, (10, 6))
+            # Pokemon name and level
+            name_font = pygame.font.Font(None, 22)
+            ns = name_font.render(p.nickname, True, Colors.TEXT_PRIMARY)
+            mini_surf.blit(ns, (10, 7))
+            lv_font = pygame.font.Font(None, 19)
+            lv_surf = lv_font.render(f"Lv.{p.level}", True, Colors.TEXT_SECONDARY)
+            mini_surf.blit(lv_surf, (mini_w - 10 - lv_surf.get_width(), 9))
 
-            # HP bar
+            # HP bar - wider and taller for readability
             hp_pct = p.current_hp / p.stats["hp"] if p.stats["hp"] else 0
             hc = Colors.HP_GREEN if hp_pct > 0.5 else Colors.HP_YELLOW if hp_pct > 0.25 else Colors.HP_RED
-            bar_x, bar_y, bar_w, bar_h = 10, 28, mini_w - 20, 7
+            bar_x, bar_y, bar_w, bar_h = 10, 30, mini_w - 20, 10
             pygame.draw.rect(mini_surf, (40, 40, 55),
-                             (bar_x, bar_y, bar_w, bar_h), border_radius=3)
+                             (bar_x, bar_y, bar_w, bar_h), border_radius=4)
             if hp_pct > 0:
                 fw = max(bar_h, int(bar_w * hp_pct))
-                pygame.draw.rect(mini_surf, hc, (bar_x, bar_y, fw, bar_h), border_radius=3)
+                pygame.draw.rect(mini_surf, hc, (bar_x, bar_y, fw, bar_h), border_radius=4)
 
-            hp_txt = nf.render(f"{p.current_hp}/{p.stats['hp']}", True, Colors.TEXT_SECONDARY)
-            mini_surf.blit(hp_txt, (10, 38))
+            hp_font = pygame.font.Font(None, 19)
+            hp_txt = hp_font.render(f"HP {p.current_hp}/{p.stats['hp']}", True, Colors.TEXT_SECONDARY)
+            mini_surf.blit(hp_txt, (10, 44))
 
             self.screen.blit(mini_surf, (mx, my))
 
@@ -1624,8 +1636,13 @@ class UI:
         self.opponent_info_panel.set_pokemon(battle.opponent_pokemon)
 
         if battle.battle_log:
-            latest = battle.battle_log[-1]
-            if self.battle_dialog.text != latest:
+            # Find the latest non-empty log entry
+            latest = ""
+            for entry in reversed(battle.battle_log):
+                if entry.strip():
+                    latest = entry
+                    break
+            if latest and self.battle_dialog.text != latest:
                 self.battle_dialog.set_text(latest)
 
         self._draw_pokemon_sprite_on_surface(surface, battle.player_pokemon,
