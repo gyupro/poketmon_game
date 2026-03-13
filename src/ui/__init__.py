@@ -141,6 +141,9 @@ class UI:
 
     def handle_event(self, event: pygame.event.Event, game) -> bool:
         if self.state == UIState.MAIN_MENU:
+            # Don't handle menu events during starter selection (game handles it)
+            if getattr(game, 'starter_selection_active', False):
+                return False
             return self._menu_ui.handle_main_menu_event(event, game)
 
         elif self.state == UIState.PAUSE_MENU:

@@ -60,7 +60,12 @@ class Game:
         self.encounter_effects = EncounterEffects(self.screen)
         self.encounter_info = EncounterInfo()
         self.show_encounter_info = True  # Toggle with F1 key
-        
+
+        # Save system (must init before checking for saves)
+        self.save_system = SaveSystem("saves")
+        self.current_slot = 0
+        self.play_time = 0.0
+
         # Enable "Continue" button if a save exists
         if self.save_system.has_save(0):
             continue_btn = self.ui.main_menu_buttons[1]
@@ -84,11 +89,6 @@ class Game:
         # Current NPC for interactions
         self.current_npc = None
         
-        # Save system
-        self.save_system = SaveSystem("saves")
-        self.current_slot = 0
-        self.play_time = 0.0
-
         # Track map transition for auto-save after completion
         self._was_transitioning = False
 
