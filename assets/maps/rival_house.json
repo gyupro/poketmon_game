@@ -1,0 +1,23 @@
+{
+    "id": "rival_house",
+    "name": "Rival's House",
+    "width": 11,
+    "height": 9,
+    "music": "pallet_town.mp3",
+    "description": "Gary's house in Pallet Town.",
+    "wild_pokemon": null,
+    "npcs": [
+        {
+            "name": "Gary's Sister",
+            "x": 6,
+            "y": 4,
+            "sprite": "lass",
+            "dialogue": [
+                "My brother went out looking for you, you know.",
+                "He never stops going on about being the best."
+            ],
+            "facing": "down",
+            "movement_type": "static"
+        }
+    ]
+}

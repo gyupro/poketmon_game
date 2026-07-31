@@ -12,7 +12,7 @@ from ..pokemon import PokemonType, StatusCondition
 from ..items import ITEM_REGISTRY, ItemCategory
 
 from .components import (
-    Colors, Button,
+    Colors, Button, draw_icon, load_sprite,
     _draw_rounded_rect, _draw_shadow, _draw_gradient_rect, _draw_type_badge,
 )
 
@@ -73,7 +73,7 @@ class MenuUI:
         btn_w = 260
         btn_h = 52
         cx = self.screen_width // 2 - btn_w // 2
-        icons = ["\u25B6", "\u25CF", "\u2699", "\u2716"]
+        icons = ["play", "dot", "gear", "cross"]
         labels = ["New Game", "Continue", "Options", "Quit"]
         self.main_menu_buttons: List[Button] = []
         for i, (label, icon) in enumerate(zip(labels, icons)):
@@ -85,19 +85,7 @@ class MenuUI:
         self.main_menu_buttons[1].text_color = Colors.DARK_GRAY
 
     def load_sprite(self, sprite_path: str, size=None):
-        cache_key = f"{sprite_path}_{size}" if size else sprite_path
-        if cache_key in self.sprite_cache:
-            return self.sprite_cache[cache_key]
-        try:
-            if os.path.exists(sprite_path):
-                sprite = pygame.image.load(sprite_path)
-                if size:
-                    sprite = pygame.transform.scale(sprite, size)
-                self.sprite_cache[cache_key] = sprite
-                return sprite
-        except Exception:
-            pass
-        return None
+        return load_sprite(self.sprite_cache, sprite_path, size)
 
     # ---- Event Handling ----
 
@@ -288,11 +276,11 @@ class MenuUI:
         self.screen.blit(title, title.get_rect(center=(self.screen_width // 2, cy + 25)))
 
         items = [
-            ("\u25B6", "Resume"),
-            ("\u2605", "Pokemon"),
-            ("\u25C6", "Bag"),
-            ("\u25CF", "Save"),
-            ("\u2715", "Quit to Menu"),
+            ("play", "Resume"),
+            ("pokeball", "Pokemon"),
+            ("bag", "Bag"),
+            ("dot", "Save"),
+            ("cross", "Quit to Menu"),
         ]
         item_h = 48
         start_y = cy + 70
@@ -308,8 +296,7 @@ class MenuUI:
                 _draw_rounded_rect(self.screen, (0, 0, 0, 0), item_rect, radius=10,
                                    border=1, border_color=Colors.CARD_BORDER)
 
-            icon_surf = self.font_medium.render(icon, True, Colors.ACCENT_LIGHT)
-            self.screen.blit(icon_surf, (cx + 40, iy + 12))
+            draw_icon(self.screen, icon, (cx + 48, iy + item_h // 2), 18, Colors.ACCENT_LIGHT)
             lbl_surf = self.font_medium.render(label, True, Colors.TEXT_PRIMARY)
             self.screen.blit(lbl_surf, (cx + 75, iy + 12))
 

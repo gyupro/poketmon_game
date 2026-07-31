@@ -1,0 +1,35 @@
+{
+    "id": "oak_lab",
+    "name": "Prof. Oak's Lab",
+    "width": 13,
+    "height": 10,
+    "music": "pallet_town.mp3",
+    "description": "Professor Oak's research lab in Pallet Town.",
+    "wild_pokemon": null,
+    "npcs": [
+        {
+            "name": "Lab Aide",
+            "x": 6,
+            "y": 1,
+            "sprite": "gentleman",
+            "dialogue": [
+                "Professor Oak is out front if you're looking for him.",
+                "We study Pokemon habitats here. Route 1 is full of Pidgey and Rattata!"
+            ],
+            "facing": "down",
+            "movement_type": "static"
+        },
+        {
+            "name": "Assistant",
+            "x": 2,
+            "y": 7,
+            "sprite": "lass",
+            "dialogue": [
+                "Those shelves hold every field report we've collected.",
+                "One day your Pokedex will fill up just like them!"
+            ],
+            "facing": "right",
+            "movement_type": "static"
+        }
+    ]
+}

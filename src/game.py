@@ -4,14 +4,17 @@ Main Game Logic - Core game loop and state management
 
 import pygame
 import math
+import os
 import random
 from typing import Optional
 from .player import Player
 from .pokemon import Pokemon, PokemonType, StatusCondition
-from .battle import Battle, BattleType
+from .battle import Battle, BattleType, Trainer
 from .ui import UI, UIState
+from .ui.components import draw_icon
 from .items import get_item
 from .world import World
+from .map import START_MAP, START_X, START_Y
 from .encounter_effects import EncounterEffects, EncounterInfo
 from .save_system import SaveSystem, SaveData
 
@@ -88,6 +91,9 @@ class Game:
         
         # Current NPC for interactions
         self.current_npc = None
+
+        # NPC currently being fought in a trainer battle
+        self._battling_npc = None
         
         # Track map transition for auto-save after completion
         self._was_transitioning = False
@@ -114,8 +120,7 @@ class Game:
         
         # Create player at spawn point
         player_name = "Ash"  # Would get from menu input in full implementation
-        spawn_x, spawn_y = 10, 10  # Starting position in Pallet Town
-        self.player = Player(player_name, spawn_x, spawn_y)
+        self.player = Player(player_name, START_X, START_Y)
         
         # Show starter selection
         self.show_starter_selection()
@@ -126,12 +131,11 @@ class Game:
         
         # Show helpful message
         print("\n=== GAME TIP ===")
-        print("You're starting in Pallet Town at position (10, 10)")
-        print("To find wild Pokemon:")
-        print("1. Go UP (NORTH) towards the center-top of town")
-        print("2. Look for the path around x=20, y=3 (near the sign)")
-        print("3. Exit is at the very top (y=0, x=18-22)")
-        print("4. Once in Route 1, walk in the TALL GRASS")
+        print(f"You start on Pallet Town's main road at ({START_X}, {START_Y}).")
+        print("1. The Pokemon Center, your house and Oak's Lab all front the high street")
+        print("2. Walk NORTH up the road to leave town through the gate at the top")
+        print("3. That road runs the length of Route 1 and on to Viridian City")
+        print("4. Step off the road into the TALL GRASS to find wild Pokemon")
         print("================\n")
         self.starter_selection_active = True
         self.selected_starter = 0
@@ -178,18 +182,27 @@ class Game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
-            
+
+            # Track held keys before anything else. The UI can swallow events
+            # (the VS screen blocks input for its whole animation, for example),
+            # and a swallowed KEYUP used to leave a direction stuck down -- so
+            # the player kept walking once the battle ended.
+            if event.type == pygame.KEYDOWN:
+                self.keys_pressed[event.key] = True
+            elif event.type == pygame.KEYUP:
+                self.keys_pressed[event.key] = False
+
             # Let UI handle events first
             if self.ui.handle_event(event, self):
                 continue
-            
+
             # Handle keyboard events
             elif event.type == pygame.KEYDOWN:
-                self.keys_pressed[event.key] = True
                 self.handle_keypress(event.key)
-            
-            elif event.type == pygame.KEYUP:
-                self.keys_pressed[event.key] = False
+
+            elif event.type == pygame.WINDOWFOCUSLOST:
+                # Keys released while unfocused never generate a KEYUP here
+                self.keys_pressed.clear()
     
     def handle_keypress(self, key):
         """Handle specific key press events."""
@@ -354,24 +367,11 @@ class Game:
             self.save_game()
 
         # Handle player movement (grid-based)
-        if not self.player.is_moving and not self.world.current_dialogue:
-            # Check for running
-            is_running = (self.keys_pressed.get(pygame.K_LSHIFT, False) or 
-                         self.keys_pressed.get(pygame.K_RSHIFT, False))
-            
-            # Check movement keys
-            if self.keys_pressed.get(pygame.K_LEFT, False) or self.keys_pressed.get(pygame.K_a, False):
-                self._try_move_player("left", is_running)
-            elif self.keys_pressed.get(pygame.K_RIGHT, False) or self.keys_pressed.get(pygame.K_d, False):
-                self._try_move_player("right", is_running)
-            elif self.keys_pressed.get(pygame.K_UP, False) or self.keys_pressed.get(pygame.K_w, False):
-                self._try_move_player("up", is_running)
-            elif self.keys_pressed.get(pygame.K_DOWN, False) or self.keys_pressed.get(pygame.K_s, False):
-                self._try_move_player("down", is_running)
-        
+        self._handle_movement_input()
+
         # Update player
         self.player.update(dt)
-        
+
         # Add grass rustling effect when in tall grass
         if self.world and not self.player.is_moving:
             grid_x, grid_y = self.player.get_grid_position()
@@ -389,11 +389,44 @@ class Game:
         # Handle world events
         if world_event == "wild_encounter":
             self.trigger_wild_encounter()
-        
+        elif world_event == "trainer_battle":
+            self.trigger_trainer_battle()
+
         # Check for map transitions
         if not self.player.is_moving:
             self.world.check_warps(self.player)
-    
+
+        # A step that finished inside update() would otherwise leave the player
+        # standing still until the next frame's input check, which shows up as a
+        # hitch every tile while a direction is held. Start the next step now
+        # that everything gated on "arrived at a tile" above has had its look.
+        if self.game_state == GameState.WORLD and not self.world.map_transition_active:
+            self._handle_movement_input()
+
+    def _handle_movement_input(self):
+        """Start a step if a direction is held and the player is free to move."""
+        if not self.player or not self.world:
+            return
+        if self.player.is_moving or self.world.current_dialogue:
+            return
+
+        # Check for running
+        is_running = (self.keys_pressed.get(pygame.K_LSHIFT, False) or
+                      self.keys_pressed.get(pygame.K_RSHIFT, False))
+
+        # Check movement keys
+        if self.keys_pressed.get(pygame.K_LEFT, False) or self.keys_pressed.get(pygame.K_a, False):
+            self._try_move_player("left", is_running)
+        elif self.keys_pressed.get(pygame.K_RIGHT, False) or self.keys_pressed.get(pygame.K_d, False):
+            self._try_move_player("right", is_running)
+        elif self.keys_pressed.get(pygame.K_UP, False) or self.keys_pressed.get(pygame.K_w, False):
+            self._try_move_player("up", is_running)
+        elif self.keys_pressed.get(pygame.K_DOWN, False) or self.keys_pressed.get(pygame.K_s, False):
+            self._try_move_player("down", is_running)
+        else:
+            # Nothing held -- don't carry leftover progress into a later step
+            self.player.move_carry = 0.0
+
     def _try_move_player(self, direction: str, is_running: bool):
         """Try to move the player in a direction."""
         if not self.player or not self.world:
@@ -470,9 +503,72 @@ class Game:
         self.current_battle.start()
         self.game_state = GameState.BATTLE
         self.ui.state = UIState.BATTLE
-    
+
+    @staticmethod
+    def _resolve_species_id(entry: dict) -> Optional[int]:
+        """Resolve a trainer team entry to a species ID (by ID or by name)."""
+        species_id = entry.get("species_id")
+        if species_id is not None:
+            return species_id
+        name = entry.get("species")
+        if name:
+            from .pokemon import POKEMON_DATA
+            for sid, data in POKEMON_DATA.items():
+                if data["name"].lower() == name.lower():
+                    return sid
+        return None
+
+    def trigger_trainer_battle(self):
+        """Start a trainer battle from a spotted/pending trainer NPC."""
+        pending = self.world.pending_trainer_battle if self.world else None
+        if self.world:
+            self.world.pending_trainer_battle = None
+
+        if not pending or not self.player or not self.player.can_battle():
+            return
+
+        npc = pending["npc"]
+        trainer_data = pending["trainer_data"] or {}
+
+        from .pokemon import create_pokemon_from_species
+
+        team = []
+        for entry in trainer_data.get("team", []):
+            species_id = self._resolve_species_id(entry)
+            if species_id is None:
+                continue
+            team.append(create_pokemon_from_species(species_id, entry.get("level", 5)))
+
+        if not team:
+            return
+
+        trainer = Trainer(
+            name=npc.name,
+            pokemon_team=team,
+            trainer_class=trainer_data.get("trainer_class", "Trainer"),
+            prize_money=trainer_data.get("reward_money", 50),
+        )
+
+        self._battling_npc = npc
+        self.encounter_effects.start_encounter_transition("spiral")
+
+        self.current_battle = Battle(self.player, trainer, BattleType.TRAINER)
+        self.current_battle.start()
+        self.game_state = GameState.BATTLE
+        self.ui.state = UIState.BATTLE
+
     def end_battle(self):
         """End current battle and return to world."""
+        # Mark trainer NPC as defeated after a won trainer battle
+        if (self.current_battle and self.current_battle.winner == "player"
+                and self.current_battle.battle_type == BattleType.TRAINER
+                and self._battling_npc is not None):
+            self._battling_npc.defeated = True
+            defeated_flag = (self._battling_npc.trainer_data or {}).get("defeated_flag")
+            if defeated_flag and self.player:
+                self.player.defeated_trainers.add(defeated_flag)
+        self._battling_npc = None
+
         # Check for white-out (all Pokemon fainted)
         if self.player and self.player.all_fainted():
             # Heal all team Pokemon to full HP
@@ -499,6 +595,24 @@ class Game:
         self.game_state = GameState.WORLD
         self.ui.state = UIState.GAME_WORLD
         self.battle_end_timer = 0.0  # Reset timer
+
+        # Re-sync held keys with the real keyboard: battle menus consume arrow
+        # keys, so anything the player pressed and released in there must not
+        # leak out as world movement.
+        self._sync_keys_pressed()
+
+    def _sync_keys_pressed(self):
+        """Rebuild the held-key map from the actual keyboard state."""
+        try:
+            pressed = pygame.key.get_pressed()
+        except pygame.error:
+            self.keys_pressed.clear()
+            return
+        for key in list(self.keys_pressed):
+            if key < len(pressed):
+                self.keys_pressed[key] = bool(pressed[key])
+        if self.player:
+            self.player.move_carry = 0.0
     
     def save_game(self):
         """Save the current game state to the active slot."""
@@ -520,6 +634,7 @@ class Game:
             last_healed_map=player_data["last_healed_map"],
             last_healed_x=player_data["last_healed_x"],
             last_healed_y=player_data["last_healed_y"],
+            defeated_trainers=player_data["defeated_trainers"],
         )
         self.save_system.save_async(self.current_slot, save_data)
 
@@ -549,6 +664,7 @@ class Game:
         self.player.last_healed_map = save_data.last_healed_map
         self.player.last_healed_x = save_data.last_healed_x
         self.player.last_healed_y = save_data.last_healed_y
+        self.player.defeated_trainers = set(save_data.defeated_trainers)
 
         # Restore team
         for poke_data in save_data.team:
@@ -617,19 +733,25 @@ class Game:
             # Render encounter effects
             self.encounter_effects.render()
             
-            # Render encounter info HUD
-            if self.show_encounter_info:
+            indoors = self.world.current_map.indoor
+
+            # Render encounter info HUD (outdoors only -- nothing lives indoors)
+            if self.show_encounter_info and not indoors:
                 encounter_data = self.world.get_encounter_info()
                 self.encounter_info.render(self.screen, encounter_data)
-            
+
             # Show location name via UI location banner
             if hasattr(self.world, 'current_map') and self.world.current_map:
                 self.ui.show_location(self.world.current_map.name)
 
-            # Show tip if in area without encounters (semi-transparent rounded style)
-            if self.world.current_map_id not in self.world.encounter_system.encounter_tables:
+            # Nudge towards the nearest wild Pokemon when standing somewhere
+            # that has none. Pointless inside a building, where it used to show
+            # up telling the player to head north out of the Pokemon Center.
+            if (not indoors
+                    and self.world.current_map_id
+                    not in self.world.encounter_system.encounter_tables):
                 tip_font = pygame.font.Font(None, 26)
-                tip_text = "No wild Pokemon here -- head NORTH to Route 1!"
+                tip_text = "No wild Pokemon in town -- follow the road out to find some!"
                 text_surface = tip_font.render(tip_text, True, (255, 240, 100))
                 text_rect = text_surface.get_rect(center=(self.SCREEN_WIDTH // 2, 55))
 
@@ -760,17 +882,14 @@ class Game:
             sprite_cy = 80
             pygame.draw.circle(card_surf, (*color, 30), (sprite_cx, sprite_cy), 55)
 
-            # Pokemon sprite
-            sprite_filename = f"{species_id}_normal.png"
-            sprite_path = f"assets/sprites/{sprite_filename}"
+            # Pokemon sprite (cached -- this runs every frame)
+            sprite_path = os.path.join("assets", "sprites", f"{species_id}_normal.png")
             sprite_size = 110
+            sprite = self.ui.load_sprite(sprite_path, (sprite_size, sprite_size))
 
-            try:
-                sprite = pygame.image.load(sprite_path)
-                sprite = pygame.transform.scale(sprite, (sprite_size, sprite_size))
-                card_surf.blit(sprite, (sprite_cx - sprite_size // 2,
-                                        sprite_cy - sprite_size // 2))
-            except Exception:
+            if sprite:
+                card_surf.blit(sprite, sprite.get_rect(center=(sprite_cx, sprite_cy)))
+            else:
                 # Fallback colored circle
                 pygame.draw.circle(card_surf, color, (sprite_cx, sprite_cy), 45)
                 fb_font = pygame.font.Font(None, 18)
@@ -801,14 +920,15 @@ class Game:
             if is_selected:
                 arrow_y = card_height - 30
                 arrow_bounce = int(4 * math.sin(tick * 0.005))
-                indicator = pygame.font.Font(None, 28).render("▲ SELECTED", True, color)
-                card_surf.blit(indicator,
-                               indicator.get_rect(center=(card_width // 2, arrow_y + arrow_bounce)))
+                indicator = pygame.font.Font(None, 28).render("SELECTED", True, color)
+                ind_rect = indicator.get_rect(center=(card_width // 2 + 8, arrow_y + arrow_bounce))
+                draw_icon(card_surf, "up", (ind_rect.left - 12, ind_rect.centery), 14, color)
+                card_surf.blit(indicator, ind_rect)
 
             self.screen.blit(card_surf, (x, start_y))
 
         # Instructions - styled pill at bottom
-        instructions_text = "◀ LEFT / RIGHT ▶  to select   •   ENTER to confirm   •   ESC to go back"
+        instructions_text = "< LEFT / RIGHT >  to select   *   ENTER to confirm   *   ESC to go back"
         inst_font = pygame.font.Font(None, 24)
         inst_surf = inst_font.render(instructions_text, True, (200, 200, 220))
         inst_rect = inst_surf.get_rect(center=(sw // 2, sh - 50))

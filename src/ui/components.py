@@ -2,6 +2,7 @@
 UI Components - Colors, drawing helpers, Button, HealthBar, ExperienceBar
 """
 
+import os
 import pygame
 import math
 from typing import Optional, Callable, List
@@ -156,6 +157,73 @@ def _draw_type_badge(surface: pygame.Surface, ptype: PokemonType, x: int, y: int
 
 
 # ---------------------------------------------------------------------------
+# Vector icons -- drawn with primitives so they never depend on font glyph
+# coverage (pygame's default font lacks most symbol/dingbat glyphs and
+# silently renders them as empty "tofu" boxes).
+# ---------------------------------------------------------------------------
+
+def draw_icon(surface: pygame.Surface, kind: str, center, size: int = 16,
+              color=(240, 240, 250)):
+    """Draw a small vector icon centered at `center`. `size` is the bounding box."""
+    cx, cy = center
+    r = size / 2
+
+    if kind == "play":  # right-pointing triangle (e.g. New Game / Fight)
+        pts = [(cx - r * 0.55, cy - r * 0.75), (cx - r * 0.55, cy + r * 0.75), (cx + r * 0.75, cy)]
+        pygame.draw.polygon(surface, color, pts)
+    elif kind == "dot":  # filled circle (e.g. Continue / Save)
+        pygame.draw.circle(surface, color, (int(cx), int(cy)), int(r * 0.55))
+    elif kind == "gear":  # simplified gear/settings icon
+        pygame.draw.circle(surface, color, (int(cx), int(cy)), int(r * 0.32))
+        pygame.draw.circle(surface, color, (int(cx), int(cy)), int(r * 0.7), 2)
+        for i in range(8):
+            ang = i * math.pi / 4
+            x1 = cx + math.cos(ang) * r * 0.7
+            y1 = cy + math.sin(ang) * r * 0.7
+            x2 = cx + math.cos(ang) * r * 0.95
+            y2 = cy + math.sin(ang) * r * 0.95
+            pygame.draw.line(surface, color, (x1, y1), (x2, y2), 2)
+    elif kind == "cross":  # X mark (e.g. Quit)
+        pygame.draw.line(surface, color, (cx - r * 0.6, cy - r * 0.6), (cx + r * 0.6, cy + r * 0.6), 3)
+        pygame.draw.line(surface, color, (cx - r * 0.6, cy + r * 0.6), (cx + r * 0.6, cy - r * 0.6), 3)
+    elif kind == "star":  # 5-point star (e.g. Bag)
+        pts = []
+        for i in range(10):
+            ang = -math.pi / 2 + i * math.pi / 5
+            rad = r if i % 2 == 0 else r * 0.42
+            pts.append((cx + math.cos(ang) * rad, cy + math.sin(ang) * rad))
+        pygame.draw.polygon(surface, color, pts)
+    elif kind == "diamond":  # rotated square (e.g. Bag - alt)
+        pts = [(cx, cy - r), (cx + r, cy), (cx, cy + r), (cx - r, cy)]
+        pygame.draw.polygon(surface, color, pts)
+    elif kind == "arrow":  # right-pointing chevron arrow (e.g. Run)
+        pygame.draw.line(surface, color, (cx - r * 0.6, cy - r * 0.7), (cx + r * 0.5, cy), 3)
+        pygame.draw.line(surface, color, (cx - r * 0.6, cy + r * 0.7), (cx + r * 0.5, cy), 3)
+    elif kind == "pokeball":  # simplified pokeball (e.g. Pokemon menu)
+        pygame.draw.circle(surface, color, (int(cx), int(cy)), int(r * 0.85), 2)
+        pygame.draw.line(surface, color, (cx - r * 0.85, cy), (cx + r * 0.85, cy), 2)
+        pygame.draw.circle(surface, color, (int(cx), int(cy)), int(r * 0.28), 2)
+    elif kind == "bag":  # simplified bag/satchel
+        body = pygame.Rect(0, 0, int(r * 1.5), int(r * 1.2))
+        body.center = (cx, cy + r * 0.15)
+        pygame.draw.rect(surface, color, body, border_radius=3)
+        pygame.draw.arc(surface, color,
+                         (cx - r * 0.45, cy - r * 0.95, r * 0.9, r * 0.9),
+                         0, math.pi, 2)
+    elif kind in ("up", "down", "left", "right"):  # carets
+        half = r * 0.6
+        if kind == "up":
+            pts = [(cx - half, cy + half * 0.6), (cx + half, cy + half * 0.6), (cx, cy - half * 0.6)]
+        elif kind == "down":
+            pts = [(cx - half, cy - half * 0.6), (cx + half, cy - half * 0.6), (cx, cy + half * 0.6)]
+        elif kind == "left":
+            pts = [(cx + half * 0.6, cy - half), (cx + half * 0.6, cy + half), (cx - half * 0.6, cy)]
+        else:
+            pts = [(cx - half * 0.6, cy - half), (cx - half * 0.6, cy + half), (cx + half * 0.6, cy)]
+        pygame.draw.polygon(surface, color, pts)
+
+
+# ---------------------------------------------------------------------------
 # Button
 # ---------------------------------------------------------------------------
 
@@ -218,10 +286,15 @@ class Button:
         # Border
         _draw_rounded_rect(screen, (0, 0, 0, 0), self.rect, radius=10,
                            border=2, border_color=Colors.CARD_BORDER)
-        # Icon + text
-        label = f"{self.icon}  {self.text}" if self.icon else self.text
-        text_surface = self.font.render(label, True, self.text_color)
-        text_rect = text_surface.get_rect(center=self.rect.center)
+        # Icon + text (icon drawn as a vector shape, never a font glyph)
+        text_surface = self.font.render(self.text, True, self.text_color)
+        icon_gap = 22 if self.icon else 0
+        block_w = text_surface.get_width() + icon_gap
+        block_left = self.rect.centerx - block_w // 2
+        if self.icon:
+            icon_color = self.text_color if self.enabled else Colors.DARK_GRAY
+            draw_icon(screen, self.icon, (block_left + 8, self.rect.centery), 16, icon_color)
+        text_rect = text_surface.get_rect(midleft=(block_left + icon_gap, self.rect.centery))
         screen.blit(text_surface, text_rect)
 
 
@@ -337,3 +410,42 @@ class ExperienceBar:
             fill_w = max(self.rect.height, int(self.rect.width * dpct))
             fill_rect = pygame.Rect(self.rect.x, self.rect.y, fill_w, self.rect.height)
             _draw_rounded_rect(screen, Colors.EXP_BLUE, fill_rect, radius=self.rect.height // 2)
+
+
+# ---------------------------------------------------------------------------
+# Sprite loading (shared cache across the UI modules)
+# ---------------------------------------------------------------------------
+
+def fit_sprite(sprite: pygame.Surface, size) -> pygame.Surface:
+    """Scale a sprite to fill ``size``, ignoring its transparent padding.
+
+    The source sprites are 96x96 frames with the Pokemon occupying only the
+    middle, so scaling the raw frame left the Pokemon looking about half the
+    intended size. Crop to the opaque bounds first, then scale that to fit
+    while keeping the aspect ratio.
+    """
+    bounds = sprite.get_bounding_rect()
+    if bounds.width <= 0 or bounds.height <= 0:
+        return pygame.transform.scale(sprite, size)
+
+    cropped = sprite.subsurface(bounds).copy()
+    scale = min(size[0] / bounds.width, size[1] / bounds.height)
+    target = (max(1, int(bounds.width * scale)), max(1, int(bounds.height * scale)))
+    return pygame.transform.smoothscale(cropped, target)
+
+
+def load_sprite(cache: dict, sprite_path: str, size=None) -> Optional[pygame.Surface]:
+    """Load a sprite through a shared cache, sized to fit if ``size`` is given."""
+    cache_key = f"{sprite_path}_{size}" if size else sprite_path
+    if cache_key in cache:
+        return cache[cache_key]
+    try:
+        if os.path.exists(sprite_path):
+            sprite = pygame.image.load(sprite_path).convert_alpha()
+            if size:
+                sprite = fit_sprite(sprite, size)
+            cache[cache_key] = sprite
+            return sprite
+    except Exception:
+        pass
+    return None

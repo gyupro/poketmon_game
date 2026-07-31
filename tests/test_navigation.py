@@ -5,7 +5,7 @@ Test navigation and map transitions
 import unittest
 from src.world import World
 from src.player import Player
-from src.map import Warp
+from src.map import Warp, GATE_COLS
 
 
 class TestNavigation(unittest.TestCase):
@@ -78,21 +78,23 @@ class TestNavigation(unittest.TestCase):
         pallet_town = self.world.maps["pallet_town"]
         route_1 = self.world.maps["route_1"]
 
+        # The gate spans the full width of the main road on both sides, so the
+        # player walks straight through instead of having to find a seam
+        gate = list(GATE_COLS)
+
         # Check Pallet Town exit warps
         pallet_warps = [w for w in pallet_town.warps if w.target_map == "route_1"]
-        self.assertEqual(len(pallet_warps), 5)  # 5 tiles wide (18-22)
+        self.assertEqual(sorted(w.x for w in pallet_warps), gate)
         for warp in pallet_warps:
             self.assertEqual(warp.y, 0)  # At the top edge
             self.assertEqual(warp.target_y, 38)  # Target is y=38 in Route 1
-            self.assertIn(warp.x, range(18, 23))
 
         # Check Route 1 return warps
         route_warps = [w for w in route_1.warps if w.target_map == "pallet_town"]
-        self.assertEqual(len(route_warps), 5)  # 5 tiles wide
+        self.assertEqual(sorted(w.x for w in route_warps), gate)
         for warp in route_warps:
             self.assertEqual(warp.y, 39)  # At the bottom edge
             self.assertEqual(warp.target_y, 1)  # Target is y=1 in Pallet Town
-            self.assertIn(warp.x, range(18, 23))
 
     def test_buffer_zone_exists(self):
         """Test that there's a buffer zone between warps."""

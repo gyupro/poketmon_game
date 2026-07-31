@@ -9,6 +9,7 @@ import random
 import math
 import time
 from typing import Dict, List, Tuple, Optional, Any
+from collections import deque
 from dataclasses import dataclass
 from enum import IntEnum
 
@@ -31,6 +32,8 @@ class TileType(IntEnum):
     SIGN = 13
     ROCK = 14
     FLOWER = 15
+    COUNTER = 16  # Indoor furniture: shop counters, shelves, tables, beds
+    ROOF = 17     # The body of an overworld building, seen from above
 
 
 @dataclass
@@ -71,7 +74,9 @@ class Tile:
             TileType.TREE,
             TileType.BUILDING_WALL,
             TileType.ROCK,
-            TileType.SIGN
+            TileType.SIGN,
+            TileType.COUNTER,
+            TileType.ROOF,
         }
         return self.type in solid_tiles
     
@@ -104,11 +109,33 @@ class Map:
         # Visual properties
         self.indoor = False
         self.dark = False
+
+        # Per-tile render cache -- tiles are static after map construction, so most
+        # tiles only need to be drawn (many primitives + RNG-derived detail) once and
+        # then blitted every frame. Animated tile types (water/tall grass/flowers/trees)
+        # are regenerated on a throttled interval instead of every frame. Without this,
+        # a full map redraw (1000+ tiles, each several draw calls plus a fresh
+        # random.Random(seed) object) costs ~70ms/frame -- far above a 16ms budget.
+        # Animated tiles are refreshed round-robin under a per-frame budget
+        # rather than all at once on a shared interval: refreshing every visible
+        # animated tile on the same frame cost ~25ms and dropped a frame several
+        # times a second, which read as the world hitching while walking.
+        self._static_tile_cache: Dict[Tuple[int, int], pygame.Surface] = {}
+        self._static_layer: Optional[pygame.Surface] = None
+        self._anim_tile_cache: Dict[Tuple[int, int], pygame.Surface] = {}
+        self._anim_cursor = 0
         
     def set_tile(self, x: int, y: int, tile_type: TileType):
         """Set a tile at the given position."""
         if 0 <= x < self.width and 0 <= y < self.height:
             self.tiles[y][x] = Tile(tile_type, x, y)
+            self._static_layer = None  # must be recomposited
+            self._static_tile_cache.pop((x, y), None)
+            self._anim_tile_cache.pop((x, y), None)
+            # A changed tile can also affect a neighbor's cached edge-blending
+            for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+                self._static_tile_cache.pop((nx, ny), None)
+                self._anim_tile_cache.pop((nx, ny), None)
     
     def get_tile(self, x: int, y: int) -> Optional[Tile]:
         """Get the tile at the given position."""
@@ -161,6 +188,13 @@ class Map:
         tile = self.get_tile(x, y)
         return tile.wild_encounter if tile else False
     
+    # Tile types whose visuals change over time (sway/shimmer/bob) and therefore
+    # can't be cached forever -- everything else is drawn once and reused.
+    _ANIMATED_TYPES = {TileType.TALL_GRASS, TileType.WATER, TileType.FLOWER, TileType.TREE}
+
+    # Animated tiles re-rendered per frame (~0.05ms each, so ~2ms of budget).
+    _ANIM_REFRESH_BUDGET = 40
+
     def render(self, screen: pygame.Surface, camera_x: int = 0, camera_y: int = 0):
         """Render the map to the screen."""
         # Calculate visible tile range
@@ -171,24 +205,30 @@ class Map:
 
         # Current time for animations
         t = time.time()
+        ts = self.tile_size
 
-        # Draw tiles
+        # The static tiles are pre-composited into one map-sized surface, so the
+        # whole non-animated layer costs a single blit per frame instead of the
+        # ~600 the viewport used to need.
+        static_layer = self._get_static_layer(t)
+        screen.blit(static_layer, (-camera_x, -camera_y))
+
+        visible_animated = []
+
         for y in range(start_y, end_y):
             for x in range(start_x, end_x):
                 tile = self.tiles[y][x]
-                if tile:
-                    screen_x = x * self.tile_size - camera_x
-                    screen_y = y * self.tile_size - camera_y
-                    self._draw_tile_enhanced(screen, tile, screen_x, screen_y, t)
+                if not tile or tile.type not in self._ANIMATED_TYPES:
+                    continue
+                key = (x, y)
+                visible_animated.append((key, tile))
 
-        # Draw tile border blending pass (softer edges between different types)
-        for y in range(start_y, end_y):
-            for x in range(start_x, end_x):
-                tile = self.tiles[y][x]
-                if tile:
-                    screen_x = x * self.tile_size - camera_x
-                    screen_y = y * self.tile_size - camera_y
-                    self._draw_tile_blending(screen, tile, x, y, screen_x, screen_y)
+                surf = self._anim_tile_cache.get(key)
+                if surf is None:
+                    surf = self._render_tile_surface(tile, x, y, t)
+                    self._anim_tile_cache[key] = surf
+
+                screen.blit(surf, (x * ts - camera_x, y * ts - camera_y))
 
         # Draw objects
         for obj in self.objects:
@@ -196,6 +236,60 @@ class Map:
                 screen_x = obj.x * self.tile_size - camera_x
                 screen_y = obj.y * self.tile_size - camera_y
                 self._draw_object(screen, obj, screen_x, screen_y)
+
+        self._refresh_animated_tiles(visible_animated, t)
+
+    def _get_static_layer(self, t: float) -> pygame.Surface:
+        """Build (once) a surface holding every non-animated tile of the map."""
+        if self._static_layer is not None:
+            return self._static_layer
+
+        ts = self.tile_size
+        layer = pygame.Surface((self.width * ts, self.height * ts), pygame.SRCALPHA)
+        for y in range(self.height):
+            for x in range(self.width):
+                tile = self.tiles[y][x]
+                if not tile or tile.type in self._ANIMATED_TYPES:
+                    continue
+                key = (x, y)
+                surf = self._static_tile_cache.get(key)
+                if surf is None:
+                    surf = self._render_tile_surface(tile, x, y, t)
+                    self._static_tile_cache[key] = surf
+                layer.blit(surf, (x * ts, y * ts))
+
+        self._static_layer = layer.convert_alpha()
+        return self._static_layer
+
+    def _refresh_animated_tiles(self, visible_animated, t: float):
+        """Re-render a bounded slice of the visible animated tiles.
+
+        A viewport on a grassy route holds 400-500 animated tiles at ~0.05ms
+        each, so refreshing them all on one frame costs 20-25ms and drops a
+        frame. Instead a fixed number are refreshed per frame, round-robin, so
+        the per-frame cost stays flat no matter how dense the map is. The tiles
+        sway slightly out of phase with each other as a result, which reads as
+        a wave rather than a glitch.
+        """
+        total = len(visible_animated)
+        if total == 0:
+            self._anim_cursor = 0
+            return
+
+        budget = min(self._ANIM_REFRESH_BUDGET, total)
+        cursor = self._anim_cursor % total
+        for i in range(budget):
+            key, tile = visible_animated[(cursor + i) % total]
+            self._anim_tile_cache[key] = self._render_tile_surface(tile, key[0], key[1], t)
+        self._anim_cursor = (cursor + budget) % total
+
+    def _render_tile_surface(self, tile: "Tile", grid_x: int, grid_y: int, t: float) -> pygame.Surface:
+        """Render one tile (base art + edge blending) onto a small cacheable surface."""
+        ts = self.tile_size
+        surf = pygame.Surface((ts, ts), pygame.SRCALPHA)
+        self._draw_tile_enhanced(surf, tile, 0, 0, t)
+        self._draw_tile_blending(surf, tile, grid_x, grid_y, 0, 0)
+        return surf
 
     def _get_neighbor_type(self, x: int, y: int) -> Optional[int]:
         """Get the tile type at a neighbor position."""
@@ -274,6 +368,10 @@ class Map:
             self._draw_flower_tile(screen, x, y, ts, seed_val, t)
         elif tile.type == TileType.ROCK:
             self._draw_rock_tile(screen, x, y, ts, seed_val)
+        elif tile.type == TileType.COUNTER:
+            self._draw_counter_tile(screen, x, y, ts)
+        elif tile.type == TileType.ROOF:
+            self._draw_roof_tile(screen, x, y, ts, seed_val)
         elif tile.type == TileType.SIGN:
             self._draw_sign_tile(screen, x, y, ts)
         elif tile.type == TileType.STAIRS:
@@ -338,16 +436,21 @@ class Map:
                                  (bx + 1, by), (bx + lean + 1, by - blade_len + 1), 1)
 
     def _draw_tall_grass_tile(self, screen, x, y, ts, seed, t):
-        """Tall grass with animated swaying blades and layered depth."""
-        # Darker green base
-        pygame.draw.rect(screen, (28, 100, 28), pygame.Rect(x, y, ts, ts))
+        """Tall grass with animated swaying blades and layered depth.
+
+        Deliberately a distinctly richer/more saturated green than plain grass
+        (rather than just darker) so encounter zones are unmistakable at a
+        glance -- this tile is where wild Pokemon battles trigger.
+        """
+        # Vivid, saturated base -- clearly distinct from plain grass (34,139,34)
+        pygame.draw.rect(screen, (46, 158, 42), pygame.Rect(x, y, ts, ts))
 
         # Texture variation -- ground patches
         rng = random.Random(seed)
         for _ in range(5):
             dx = rng.randint(1, ts - 2)
             dy = rng.randint(1, ts - 2)
-            patch_shade = rng.choice([(24, 85, 24), (22, 78, 22), (30, 92, 30)])
+            patch_shade = rng.choice([(38, 140, 34), (34, 130, 30), (52, 168, 46)])
             pygame.draw.rect(screen, patch_shade,
                              pygame.Rect(x + dx, y + dy, 3, 2))
 
@@ -361,30 +464,31 @@ class Map:
             by = y + ts - 4
             blade_h = 7 + (seed + i * 3) % 4
             lean = sway2 + ((seed + i * 5) % 5) - 2
-            pygame.draw.line(screen, (18, 60, 18),
+            pygame.draw.line(screen, (26, 100, 24),
                              (bx, by), (int(bx + lean), int(by - blade_h)), 2)
 
-        # Foreground blades (brighter, taller, thicker sway)
-        num_blades = 6
+        # Foreground blades (brighter, taller, thicker sway) -- denser than
+        # before so the tile reads as a leafy patch, not just a green square
+        num_blades = 8
         for i in range(num_blades):
-            bx = x + 2 + i * 5 + (seed % 2)
+            bx = x + 1 + i * 4 + (seed % 2)
             by = y + ts - 2
-            blade_h = 10 + (seed + i) % 7
+            blade_h = 11 + (seed + i) % 8
             lean = sway + ((seed + i * 7) % 5) - 2
 
             # Main blade
-            pygame.draw.line(screen, (22, 80, 22),
+            pygame.draw.line(screen, (34, 120, 30),
                              (bx, by), (int(bx + lean), int(by - blade_h)), 2)
             # Highlight blade
-            pygame.draw.line(screen, (45, 120, 45),
+            pygame.draw.line(screen, (90, 200, 60),
                              (bx + 1, by), (int(bx + lean + 1), int(by - blade_h + 2)), 1)
             # Blade tip accent
             if i % 2 == 0:
-                pygame.draw.circle(screen, (55, 130, 40),
+                pygame.draw.circle(screen, (110, 210, 70),
                                    (int(bx + lean), int(by - blade_h)), 1)
 
-        # Subtle dark border to distinguish from regular grass
-        pygame.draw.rect(screen, (20, 80, 20), pygame.Rect(x, y, ts, ts), 1)
+        # Strong dark border so the encounter-zone boundary is unmistakable
+        pygame.draw.rect(screen, (14, 66, 16), pygame.Rect(x, y, ts, ts), 2)
 
     def _draw_water_tile(self, screen, x, y, ts, seed, t):
         """Water tile with animated ripple rings, color-shifting, and sparkle spots."""
@@ -646,6 +750,62 @@ class Map:
                             pygame.Rect(4, 2, ts - 8, ts // 2))
         screen.blit(shine_surf, (x, y))
 
+    def _draw_roof_tile(self, screen, x, y, ts, seed):
+        """Roof shingles for the body of an overworld building.
+
+        Buildings used to be drawn with walkable floor tiles inside their
+        footprint, which read as a room you ought to be able to walk into and
+        left dead space on the map. The body is now solid roof, and the way in
+        is the door on the front wall.
+        """
+        base = (176, 74, 66)
+        pygame.draw.rect(screen, base, pygame.Rect(x, y, ts, ts))
+
+        # Shingle courses, offset every other row so they interlock
+        shade = (150, 60, 54)
+        light = (198, 96, 86)
+        row_h = ts // 4
+        for row in range(4):
+            ry = y + row * row_h
+            offset = (row % 2) * (ts // 6)
+            pygame.draw.line(screen, shade, (x, ry), (x + ts, ry), 1)
+            for col in range(3):
+                cx = x + offset + col * (ts // 3)
+                if x <= cx <= x + ts:
+                    pygame.draw.line(screen, shade, (cx, ry), (cx, ry + row_h), 1)
+            pygame.draw.line(screen, light, (x, ry + 1), (x + ts, ry + 1), 1)
+
+        # Slight per-tile weathering so a large roof isn't perfectly flat
+        if seed % 4 == 0:
+            weather = pygame.Surface((ts, ts), pygame.SRCALPHA)
+            weather.fill((0, 0, 0, 18))
+            screen.blit(weather, (x, y))
+
+    def _draw_counter_tile(self, screen, x, y, ts):
+        """Indoor furniture: a wooden counter/table sitting on the room floor.
+
+        Interiors used to reuse ROCK for furniture, which drew boulders on a
+        patch of grass in the middle of a Pokemon Center.
+        """
+        self._draw_building_floor_tile(screen, x, y, ts)
+
+        top = pygame.Rect(x + 1, y + 4, ts - 2, ts - 10)
+        pygame.draw.rect(screen, (150, 105, 62), top, border_radius=3)
+        # Lit top surface
+        pygame.draw.rect(screen, (178, 130, 82),
+                         pygame.Rect(top.x + 2, top.y + 2, top.width - 4, top.height // 2),
+                         border_radius=2)
+        # Wood grain
+        for i in range(2):
+            gy = top.y + 6 + i * 6
+            pygame.draw.line(screen, (128, 88, 50),
+                             (top.x + 4, gy), (top.right - 4, gy), 1)
+        # Front edge shadow and outline
+        pygame.draw.rect(screen, (104, 70, 38),
+                         pygame.Rect(top.x, top.bottom - 3, top.width, 3),
+                         border_radius=2)
+        pygame.draw.rect(screen, (86, 58, 32), top, 1, border_radius=3)
+
     def _draw_door_tile(self, screen, x, y, ts):
         """Door tile with wood grain, handle, and frame detail."""
         # Door frame (outer)
@@ -871,433 +1031,483 @@ class Map:
             pygame.draw.rect(screen, (101, 67, 33), pygame.Rect(x + 14, y + 24, 4, 8))
 
 
-def create_sample_maps() -> Dict[str, Map]:
-    """Create sample maps for the game.
 
-    NOTE: This function is still required because the JSON files in
-    assets/maps/ only contain metadata (NPCs, warps, wild_pokemon) and do
-    NOT include tile data.  All tile layouts are generated procedurally
-    here.  Once tile data is migrated to JSON this function can be removed.
+# ===========================================================================
+# Map construction
+#
+# Every map is laid down in the same order: terrain, scenery, tree border,
+# then roads, then buildings, then signs. Carving the roads after the border
+# is what keeps entrances open -- the previous generator painted the tree
+# border after the paths and so sealed Route 1's own exits shut.
+#
+# Doors are never placed by hand: _place_building puts the door on the front
+# wall, _link_building wires it to an interior in both directions, and
+# _connect_down carves a stub from it until it meets a road. validate_maps()
+# re-checks all of it on every build.
+# ===========================================================================
+
+# Maps are generated from a fixed seed so a given build is always identical.
+# They used to use the global RNG, so scenery landed differently on every
+# launch and a tree could randomly close off a path.
+MAP_SEED = 20240521
+
+# Shared road geometry. The main north-south road occupies these columns on
+# every outdoor map, so a town's exit always lines up with the route it leads
+# to and the player walks through in a straight line.
+GATE_COLS = range(18, 22)
+GATE_X = 18
+ROAD_W = 4
+
+# Where a new game starts, and where a whited-out player is sent back to:
+# the middle of Pallet Town's main road, in sight of the lab and the Center.
+START_MAP = "pallet_town"
+START_X = 20
+START_Y = 20
+
+
+def _fill(m: Map, x1: int, y1: int, x2: int, y2: int, tile: TileType):
+    """Fill an inclusive rectangle, clipped to the map."""
+    for y in range(max(0, y1), min(m.height, y2 + 1)):
+        for x in range(max(0, x1), min(m.width, x2 + 1)):
+            m.set_tile(x, y, tile)
+
+
+def _scatter(m: Map, rng: random.Random, x1: int, y1: int, x2: int, y2: int,
+             tile: TileType, density: float):
+    """Randomly sprinkle a tile through a rectangle."""
+    for y in range(max(0, y1), min(m.height, y2 + 1)):
+        for x in range(max(0, x1), min(m.width, x2 + 1)):
+            if rng.random() < density:
+                m.set_tile(x, y, tile)
+
+
+def _blob(m: Map, rng: random.Random, cx: int, cy: int, radius: int,
+          tile: TileType, density: float = 0.75):
+    """Sprinkle a tile inside a circle, for natural-looking clusters."""
+    for y in range(cy - radius, cy + radius + 1):
+        for x in range(cx - radius, cx + radius + 1):
+            if (x - cx) ** 2 + (y - cy) ** 2 <= radius ** 2 and rng.random() < density:
+                m.set_tile(x, y, tile)
+
+
+def _tree_border(m: Map, thickness: int = 2):
+    """Ring the map in trees. Gates are carved back out by the roads."""
+    _fill(m, 0, 0, m.width - 1, thickness - 1, TileType.TREE)
+    _fill(m, 0, m.height - thickness, m.width - 1, m.height - 1, TileType.TREE)
+    _fill(m, 0, 0, thickness - 1, m.height - 1, TileType.TREE)
+    _fill(m, m.width - thickness, 0, m.width - 1, m.height - 1, TileType.TREE)
+
+
+def _road(m: Map, points, width: int = ROAD_W, tile: TileType = TileType.PATH):
+    """Carve a road along an axis-aligned polyline.
+
+    A point is the top-left corner of the road band, so consecutive segments
+    that share a corner always overlap -- the road cannot come out in
+    disconnected pieces.
     """
-    maps = {}
-    
-    # Starting Town - Now larger and more detailed
-    town = Map("pallet_town", 40, 30, "Pallet Town")
-    
-    # Create town layout with improved design
-    for y in range(30):
-        for x in range(40):
-            # Default to grass
-            town.set_tile(x, y, TileType.GRASS)
-            
-            # Add main paths (wider and more organic)
-            # Horizontal main road
-            if 12 <= y <= 17 and 5 <= x <= 34:
-                town.set_tile(x, y, TileType.PATH)
-            # Vertical paths connecting buildings
-            if 15 <= x <= 17 or 22 <= x <= 24:
-                if 5 <= y <= 25:
-                    town.set_tile(x, y, TileType.PATH)
-            
-            # Add clear path to Route 1 exit
-            if 18 <= x <= 22 and y <= 5:
-                town.set_tile(x, y, TileType.PATH)
-            
-            # Add trees for natural borders (denser forest feel)
-            # Leave gap for Route 1 exit at top
-            if x <= 2 or x >= 37 or y >= 27:
-                town.set_tile(x, y, TileType.TREE)
-            elif y <= 2:
-                # Only add trees at top if not in exit area
-                if x < 17 or x > 23:
-                    town.set_tile(x, y, TileType.TREE)
-            # Additional tree clusters
-            if (3 <= x <= 6 and 3 <= y <= 8) or (33 <= x <= 36 and 20 <= y <= 25):
-                if random.random() > 0.3:  # Random tree placement
-                    town.set_tile(x, y, TileType.TREE)
-    
-    # Add Pokemon Center (larger building)
-    for y in range(6, 12):
-        for x in range(8, 15):
-            if y == 6 or y == 11 or x == 8 or x == 14:
-                town.set_tile(x, y, TileType.BUILDING_WALL)
-            else:
-                town.set_tile(x, y, TileType.BUILDING_FLOOR)
-    town.set_tile(11, 11, TileType.DOOR)
-    # Add roof decoration
-    for x in range(9, 14):
-        town.set_tile(x, 5, TileType.ROCK)  # Using rock as roof tiles
-    
-    # Add Player's House (cozy home with garden)
-    for y in range(20, 25):
-        for x in range(10, 16):
-            if y == 20 or y == 24 or x == 10 or x == 15:
-                town.set_tile(x, y, TileType.BUILDING_WALL)
-            else:
-                town.set_tile(x, y, TileType.BUILDING_FLOOR)
-    town.set_tile(12, 24, TileType.DOOR)
-    # Add small garden
-    for y in range(25, 27):
-        for x in range(11, 15):
-            if random.random() > 0.4:
-                town.set_tile(x, y, TileType.FLOWER)
-    
-    # Add Rival's House (matching player's house)
-    for y in range(20, 25):
-        for x in range(24, 30):
-            if y == 20 or y == 24 or x == 24 or x == 29:
-                town.set_tile(x, y, TileType.BUILDING_WALL)
-            else:
-                town.set_tile(x, y, TileType.BUILDING_FLOOR)
-    town.set_tile(26, 24, TileType.DOOR)
-    
-    # Add Professor's Lab (important building)
-    for y in range(7, 14):
-        for x in range(18, 28):
-            if y == 7 or y == 13 or x == 18 or x == 27:
-                town.set_tile(x, y, TileType.BUILDING_WALL)
-            else:
-                town.set_tile(x, y, TileType.BUILDING_FLOOR)
-    town.set_tile(22, 13, TileType.DOOR)
-    town.set_tile(23, 13, TileType.DOOR)  # Double door for lab
-    
-    # Add decorative elements throughout town
-    # Fountain in town center
-    for y in range(14, 17):
-        for x in range(19, 22):
-            if (x == 19 or x == 21) and (y == 14 or y == 16):
-                town.set_tile(x, y, TileType.ROCK)
-            elif x == 20 and y == 15:
-                town.set_tile(x, y, TileType.WATER)
-    
-    # Flower beds and decorations
-    flower_spots = [(6, 18), (7, 19), (31, 15), (32, 16), (8, 23), (30, 8)]
-    for x, y in flower_spots:
-        town.set_tile(x, y, TileType.FLOWER)
-    
-    # Benches (using rocks as placeholder)
-    bench_spots = [(13, 18), (26, 18), (16, 9), (23, 9)]
-    for x, y in bench_spots:
-        town.set_tile(x, y, TileType.ROCK)
-    
-    # Add signs
-    town.set_tile(16, 19, TileType.SIGN)
-    town.add_object(MapObject(16, 19, "sign", {
-        "text": "Welcome to Pallet Town!\nA quiet town of new beginnings."
-    }))
-    
-    town.set_tile(22, 6, TileType.SIGN)
-    town.add_object(MapObject(22, 6, "sign", {
-        "text": "Professor Oak's Pokemon Lab\nCutting-edge Pokemon research!"
-    }))
-    
-    town.set_tile(11, 5, TileType.SIGN)
-    town.add_object(MapObject(11, 5, "sign", {
-        "text": "Pokemon Center\nHeal your Pokemon for free!"
-    }))
-    
-    town.set_tile(20, 3, TileType.SIGN)
-    town.add_object(MapObject(20, 3, "sign", {
-        "text": "Route 1 - North\nWild Pokemon in tall grass!"
-    }))
-    
-    # Add warps
-    # Exit to Route 1 (multiple tiles for wider exit)
-    for x in range(18, 23):
-        town.add_warp(Warp(x, 0, "route_1", x, 38))
-    
-    # NPCs are handled by World class, not added here
-    
-    maps["pallet_town"] = town
-    
-    # Route 1 - Much larger with varied terrain
-    route = Map("route_1", 40, 40, "Route 1")
-    
-    # Create route layout with natural winding path
-    for y in range(40):
-        for x in range(40):
-            # Default to grass
-            route.set_tile(x, y, TileType.GRASS)
-            
-            # Create a winding path
-            path_width = 4
-            # Main path with curves
-            if y < 10:
-                if 18 <= x <= 21:  # Straight section
-                    route.set_tile(x, y, TileType.PATH)
-            elif 10 <= y < 15:
-                if 18 - (y - 10) <= x <= 21 - (y - 10):  # Curve left
-                    route.set_tile(x, y, TileType.PATH)
-            elif 15 <= y < 25:
-                if 13 <= x <= 16:  # Left path
-                    route.set_tile(x, y, TileType.PATH)
-            elif 25 <= y < 30:
-                if 13 + (y - 25) <= x <= 16 + (y - 25):  # Curve right
-                    route.set_tile(x, y, TileType.PATH)
-            else:
-                if 18 <= x <= 21:  # Back to center
-                    route.set_tile(x, y, TileType.PATH)
-            
-            # Add extensive tall grass areas for encounters
-            grass_areas = [
-                (5, 5, 12, 15),    # Left upper area
-                (25, 8, 35, 18),   # Right upper area
-                (3, 20, 10, 30),   # Left lower area
-                (28, 25, 37, 35),  # Right lower area
-                (8, 32, 15, 38),   # Bottom left patch
-                (23, 30, 30, 37),  # Bottom right patch
-            ]
-            
-            for gx1, gy1, gx2, gy2 in grass_areas:
-                if gx1 <= x <= gx2 and gy1 <= y <= gy2:
-                    # Create patches with some normal grass mixed in
-                    if random.random() > 0.2:
-                        route.set_tile(x, y, TileType.TALL_GRASS)
-            
-            # Add tree borders and clusters
-            if x <= 1 or x >= 38 or y <= 1 or y >= 38:
-                route.set_tile(x, y, TileType.TREE)
-            
-            # Tree clusters for more natural look
-            tree_clusters = [
-                (22, 12, 5),  # (center_x, center_y, radius)
-                (10, 18, 4),
-                (30, 22, 4),
-                (15, 35, 3),
-            ]
-            
-            for cx, cy, radius in tree_clusters:
-                if ((x - cx) ** 2 + (y - cy) ** 2) <= radius ** 2:
-                    if random.random() > 0.3:
-                        route.set_tile(x, y, TileType.TREE)
-    
-    # Add terrain features
-    # Rocks scattered around
-    rock_positions = [(6, 10), (14, 7), (25, 15), (32, 28), (8, 25), (20, 5)]
-    for x, y in rock_positions:
-        route.set_tile(x, y, TileType.ROCK)
-    
-    # Ledges for one-way movement
-    for x in range(10, 15):
-        route.set_tile(x, 18, TileType.LEDGE_DOWN)
-    for x in range(24, 28):
-        route.set_tile(x, 23, TileType.LEDGE_DOWN)
-    
-    # Small pond
-    for y in range(12, 15):
-        for x in range(31, 34):
-            route.set_tile(x, y, TileType.WATER)
-    
-    # Flower patches
-    flower_areas = [(7, 8), (12, 22), (26, 10), (33, 32)]
-    for fx, fy in flower_areas:
-        for dx in range(-1, 2):
-            for dy in range(-1, 2):
-                if random.random() > 0.5:
-                    route.set_tile(fx + dx, fy + dy, TileType.FLOWER)
-    
-    # Add warps
-    # Multiple tiles for entrance from Pallet Town
-    for x in range(18, 23):
-        route.add_warp(Warp(x, 39, "pallet_town", x, 1))
-    # Exit to Viridian City
-    for x in range(18, 23):
-        route.add_warp(Warp(x, 0, "viridian_city", x, 39))
-    
-    # Set wild Pokemon data
-    route.wild_pokemon_data = {
+    for (x1, y1), (x2, y2) in zip(points, points[1:]):
+        if x1 == x2:
+            _fill(m, x1, min(y1, y2), x1 + width - 1, max(y1, y2), tile)
+        elif y1 == y2:
+            _fill(m, min(x1, x2), y1, max(x1, x2), y1 + width - 1, tile)
+        else:
+            raise ValueError(
+                f"road segment {(x1, y1)}->{(x2, y2)} is not axis aligned")
+
+
+def _connect_down(m: Map, x: int, y: int, limit: int = 16) -> bool:
+    """Carve straight down from (x, y) until an existing road is reached."""
+    for step in range(limit):
+        ty = y + step
+        if ty >= m.height:
+            return False
+        tile = m.get_tile(x, ty)
+        if tile and tile.type == TileType.PATH:
+            return True
+        m.set_tile(x, ty, TileType.PATH)
+    return False
+
+
+def _seal_pockets(m: Map, start: Tuple[int, int], fill: TileType = TileType.TREE):
+    """Close off outdoor ground the player can never actually reach.
+
+    Scenery clusters inevitably fence off the odd tile of grass. Left as-is
+    those read as somewhere you ought to be able to walk to, so they are turned
+    back into scenery. Building interiors are left alone -- they are meant to
+    be sealed, and are entered through their door.
+    """
+    reachable = flood_fill(m, start)
+    outdoor = {TileType.GRASS, TileType.TALL_GRASS, TileType.PATH, TileType.FLOWER}
+    for y in range(m.height):
+        for x in range(m.width):
+            tile = m.tiles[y][x]
+            if tile and tile.type in outdoor and (x, y) not in reachable:
+                m.set_tile(x, y, fill)
+
+
+def _place_building(m: Map, x: int, y: int, w: int, h: int, door_dx: int):
+    """Draw a building: roof over the body, front wall along the bottom.
+
+    The whole footprint is solid -- the only way in is the door, which leads to
+    the building's interior map.
+    """
+    _fill(m, x, y, x + w - 1, y + h - 2, TileType.ROOF)
+    _fill(m, x, y + h - 1, x + w - 1, y + h - 1, TileType.BUILDING_WALL)
+    door = (x + door_dx, y + h - 1)
+    m.set_tile(door[0], door[1], TileType.DOOR)
+    return door
+
+
+def _add_sign(m: Map, x: int, y: int, text: str):
+    """Place a readable sign beside a road.
+
+    Signs are solid, so one dropped onto a road narrows or blocks it. Refusing
+    that here catches the mistake while the map is being built rather than
+    leaving the player wedged against a signpost.
+    """
+    tile = m.get_tile(x, y)
+    if tile is not None and tile.type == TileType.PATH:
+        raise ValueError(f"{m.id}: sign at ({x},{y}) would block a road")
+    if not any(m.is_walkable(x + dx, y + dy)
+               for dx, dy in ((0, 1), (0, -1), (1, 0), (-1, 0))):
+        raise ValueError(f"{m.id}: sign at ({x},{y}) cannot be reached to read")
+
+    m.set_tile(x, y, TileType.SIGN)
+    m.add_object(MapObject(x, y, "sign", {"text": text}))
+
+
+def _build_interior(map_id: str, name: str, kind: str,
+                    exit_map: str, exit_x: int, exit_y: int,
+                    width: int = 11, height: int = 9) -> Map:
+    """Build a room interior with a door back out onto the overworld.
+
+    Furniture is kept off the door column so the way in and out is always
+    clear, and shopkeepers stand at the head of that column where the player
+    walks straight up to them.
+    """
+    room = Map(map_id, width, height, name)
+    room.indoor = True
+
+    _fill(room, 0, 0, width - 1, height - 1, TileType.BUILDING_WALL)
+    _fill(room, 1, 1, width - 2, height - 2, TileType.BUILDING_FLOOR)
+
+    door_x = width // 2
+    room.set_tile(door_x, height - 1, TileType.DOOR)
+    room.add_warp(Warp(door_x, height - 1, exit_map, exit_x, exit_y, "door"))
+
+    if kind == "pokecenter":
+        _fill(room, 2, 2, door_x - 1, 2, TileType.COUNTER)          # healing counter
+        _fill(room, door_x + 1, 2, width - 3, 2, TileType.COUNTER)  # storage PC
+    elif kind == "mart":
+        _fill(room, 2, 2, door_x - 1, 2, TileType.COUNTER)          # shop counter
+        _fill(room, door_x + 2, 2, width - 3, 3, TileType.COUNTER)  # shelves
+    elif kind == "lab":
+        _fill(room, 1, 2, door_x - 1, 2, TileType.COUNTER)          # bookshelves
+        _fill(room, door_x + 1, 2, width - 2, 2, TileType.COUNTER)
+        _fill(room, 2, 5, 3, 5, TileType.COUNTER)                   # research tables
+        _fill(room, width - 4, 5, width - 3, 5, TileType.COUNTER)
+    else:  # generic house
+        _fill(room, 1, 2, 2, 3, TileType.COUNTER)                   # bed
+        room.set_tile(width - 3, 2, TileType.COUNTER)               # table
+        room.set_tile(width - 3, height - 3, TileType.COUNTER)      # dresser
+
+    return room
+
+
+def _link_building(overworld: Map, interiors: Dict[str, Map], door,
+                   interior_id: str, name: str, kind: str, **room_kwargs) -> Map:
+    """Wire a door on the overworld to a freshly built interior, both ways."""
+    door_x, door_y = door
+    step_out = (door_x, door_y + 1)
+
+    room = _build_interior(interior_id, name, kind, overworld.id,
+                           step_out[0], step_out[1], **room_kwargs)
+    # Land one tile above the room's own exit door, so walking in doesn't drop
+    # the player straight back onto the warp they just came through.
+    overworld.add_warp(Warp(door_x, door_y, interior_id,
+                            room.width // 2, room.height - 2, "door"))
+    interiors[interior_id] = room
+    return room
+
+
+def _link_edges(a: Map, b: Map, columns, a_y: int, b_y: int,
+                a_land_y: int, b_land_y: int):
+    """Join two overworld maps along a shared edge, in both directions.
+
+    The landing row sits one tile inside the destination's own gate row:
+    landing straight onto the return warp would bounce the player back.
+    """
+    for x in columns:
+        a.add_warp(Warp(x, a_y, b.id, x, b_land_y))
+        b.add_warp(Warp(x, b_y, a.id, x, a_land_y))
+
+
+# ---------------------------------------------------------------------------
+# Individual maps
+# ---------------------------------------------------------------------------
+
+def _build_pallet_town(rng: random.Random) -> Tuple[Map, Dict[str, Map]]:
+    """Pallet Town: a high street with buildings along it, gate north."""
+    m = Map("pallet_town", 40, 30, "Pallet Town")
+    interiors: Dict[str, Map] = {}
+
+    # 1. terrain + scenery
+    _fill(m, 0, 0, 39, 29, TileType.GRASS)
+    _blob(m, rng, 6, 25, 4, TileType.TREE, 0.7)
+    _blob(m, rng, 34, 25, 4, TileType.TREE, 0.7)
+    _blob(m, rng, 35, 5, 3, TileType.TREE, 0.6)
+    _fill(m, 8, 19, 10, 21, TileType.WATER)                    # village pond
+    m.set_tile(7, 19, TileType.ROCK)
+    m.set_tile(11, 21, TileType.ROCK)
+    _scatter(m, rng, 5, 18, 15, 18, TileType.FLOWER, 0.25)
+    _scatter(m, rng, 30, 19, 36, 22, TileType.FLOWER, 0.2)
+
+    # 2. border, then 3. roads carved through it
+    _tree_border(m, thickness=2)
+    _road(m, [(GATE_X, 0), (GATE_X, 27)])                      # gate -> south
+    _road(m, [(3, 14), (36, 14)])                              # high street
+    _road(m, [(6, 24), (33, 24)], 3)                           # south lane
+
+    # 4. buildings, each fronting a street
+    pc_door = _place_building(m, 4, 6, 8, 7, 3)
+    _link_building(m, interiors, pc_door, "pokecenter_1", "Pokemon Center", "pokecenter")
+    _connect_down(m, pc_door[0], pc_door[1] + 1)
+
+    lab_door = _place_building(m, 24, 5, 11, 8, 5)
+    _link_building(m, interiors, lab_door, "oak_lab", "Prof. Oak's Lab", "lab",
+                   width=13, height=10)
+    _connect_down(m, lab_door[0], lab_door[1] + 1)
+
+    home_door = _place_building(m, 12, 8, 6, 5, 2)
+    _link_building(m, interiors, home_door, "player_house", "Your House", "house")
+    _connect_down(m, home_door[0], home_door[1] + 1)
+
+    rival_door = _place_building(m, 24, 18, 6, 5, 2)
+    _link_building(m, interiors, rival_door, "rival_house", "Rival's House", "house")
+    _connect_down(m, rival_door[0], rival_door[1] + 1)
+
+    # 5. signs, placed beside a road so they can always be read
+    _add_sign(m, pc_door[0] + 2, pc_door[1] + 1,
+              "Pokemon Center\nRest and heal your Pokemon for free!")
+    _add_sign(m, lab_door[0] + 2, lab_door[1] + 1,
+              "Prof. Oak's Pokemon Lab\nWhere every journey begins.")
+    _add_sign(m, 17, 4, "North: Route 1\nWild Pokemon hide in the tall grass.")
+    _add_sign(m, 17, 18, "Welcome to Pallet Town!\nA quiet town of new beginnings.")
+
+    _seal_pockets(m, (GATE_X, 20))
+    m.background_music = "pallet_town.mp3"
+    return m, interiors
+
+
+def _build_route_1(rng: random.Random) -> Map:
+    """Route 1: one continuous road from the Pallet gate to the Viridian gate."""
+    m = Map("route_1", 40, 40, "Route 1")
+
+    _fill(m, 0, 0, 39, 39, TileType.GRASS)
+
+    # Tall grass for encounters, off to either side of where the road will run
+    for x1, y1, x2, y2 in [(4, 4, 14, 14), (25, 6, 35, 17),
+                           (3, 22, 11, 32), (26, 24, 36, 35),
+                           (6, 34, 15, 37)]:
+        _scatter(m, rng, x1, y1, x2, y2, TileType.TALL_GRASS, 0.82)
+
+    _fill(m, 30, 11, 33, 14, TileType.WATER)                   # pond
+    for cx, cy, r in [(23, 13, 4), (9, 18, 3), (31, 22, 3), (15, 33, 3)]:
+        _blob(m, rng, cx, cy, r, TileType.TREE, 0.7)
+    for x, y in [(6, 10), (14, 7), (26, 19), (33, 28), (8, 26), (17, 5)]:
+        m.set_tile(x, y, TileType.ROCK)
+    for fx, fy in [(7, 8), (12, 21), (27, 9), (34, 33)]:
+        _blob(m, rng, fx, fy, 1, TileType.FLOWER, 0.6)
+
+    _tree_border(m, thickness=2)
+
+    # The road, carved last so neither gate can be closed off by the border or
+    # by a scenery cluster. It runs gate to gate in one unbroken line.
+    _road(m, [(GATE_X, 39), (GATE_X, 26), (13, 26), (13, 12),
+              (GATE_X, 12), (GATE_X, 0)])
+
+    _add_sign(m, 22, 36, "Route 1\nPallet Town is south, Viridian City is north.")
+    _add_sign(m, 12, 16, "Tall grass ahead!\nWild Pokemon live in it.")
+
+    _seal_pockets(m, (GATE_X, 30))
+    m.wild_pokemon_data = {
         "grass": [
             {"species": "Pidgey", "levels": [2, 5]},
             {"species": "Rattata", "levels": [2, 4]},
-            {"species": "Caterpie", "levels": [3, 5]}
+            {"species": "Caterpie", "levels": [3, 5]},
         ]
     }
-    
-    maps["route_1"] = route
-    
-    # Pokemon Center Interior
-    pokecenter = Map("pokecenter_1", 10, 8, "Pokemon Center")
-    pokecenter.indoor = True
-    
-    # Create interior
-    for y in range(8):
-        for x in range(10):
-            # Walls
-            if x == 0 or x == 9 or y == 0 or y == 7:
-                pokecenter.set_tile(x, y, TileType.BUILDING_WALL)
-            else:
-                pokecenter.set_tile(x, y, TileType.BUILDING_FLOOR)
-    
-    # Add door
-    pokecenter.set_tile(5, 7, TileType.DOOR)
-    pokecenter.add_warp(Warp(5, 7, "pallet_town", 5, 8))
-    
-    # Add healing station (Nurse Joy)
-    pokecenter.add_object(MapObject(5, 2, "npc", {
-        "name": "Nurse Joy",
-        "dialogue": ["Welcome to the Pokemon Center!",
-                    "Would you like me to heal your Pokemon?"],
-        "healer": True
-    }))
-    
-    maps["pokecenter_1"] = pokecenter
+    m.background_music = "route_1.mp3"
+    return m
 
-    # Viridian City - 40x40 map with Pokemon Center and Poke Mart
-    viridian = Map("viridian_city", 40, 40, "Viridian City")
 
-    for y in range(40):
-        for x in range(40):
-            # Default to grass
-            viridian.set_tile(x, y, TileType.GRASS)
+def _build_viridian_city(rng: random.Random) -> Tuple[Map, Dict[str, Map]]:
+    """Viridian City: three streets off one avenue, gate south to Route 1."""
+    m = Map("viridian_city", 40, 40, "Viridian City")
+    interiors: Dict[str, Map] = {}
 
-            # Tree borders (leave gaps for south and north exits)
-            if x <= 1 or x >= 38:
-                viridian.set_tile(x, y, TileType.TREE)
-            elif y <= 1:
-                # North border - leave gap at x 18-22 for blocked north exit
-                if x < 17 or x > 23:
-                    viridian.set_tile(x, y, TileType.TREE)
-            elif y >= 38:
-                # South border - leave gap at x 18-22 for Route 1 exit
-                if x < 17 or x > 23:
-                    viridian.set_tile(x, y, TileType.TREE)
+    _fill(m, 0, 0, 39, 39, TileType.GRASS)
+    _scatter(m, rng, 31, 24, 36, 28, TileType.TALL_GRASS, 0.8)
+    _scatter(m, rng, 4, 33, 14, 36, TileType.TALL_GRASS, 0.8)
+    _fill(m, 34, 10, 37, 13, TileType.WATER)                   # pond
+    _blob(m, rng, 5, 22, 3, TileType.TREE, 0.6)
+    _blob(m, rng, 36, 34, 3, TileType.TREE, 0.6)
 
-            # Main east-west road
-            if 18 <= y <= 21 and 3 <= x <= 37:
-                viridian.set_tile(x, y, TileType.PATH)
+    _tree_border(m, thickness=2)
 
-            # Main north-south road (center)
-            if 18 <= x <= 21:
-                if 2 <= y <= 38:
-                    viridian.set_tile(x, y, TileType.PATH)
+    # The avenue stops short of the north border: Route 2 isn't in the game
+    # yet, so there is deliberately no gap up there pretending to be an exit.
+    _road(m, [(GATE_X, 39), (GATE_X, 6)])                      # main avenue
+    _road(m, [(4, 18), (35, 18)])                              # central street
+    _road(m, [(4, 6), (35, 6)], 3)                             # north street
+    _road(m, [(6, 30), (33, 30)], 3)                           # south street
 
-            # Path to Pokemon Center (left side)
-            if 5 <= x <= 17 and 18 <= y <= 21:
-                viridian.set_tile(x, y, TileType.PATH)
-            if 8 <= x <= 11 and 15 <= y <= 18:
-                viridian.set_tile(x, y, TileType.PATH)
-
-            # Path to Poke Mart (right side)
-            if 21 <= x <= 32 and 18 <= y <= 21:
-                viridian.set_tile(x, y, TileType.PATH)
-            if 27 <= x <= 30 and 15 <= y <= 18:
-                viridian.set_tile(x, y, TileType.PATH)
-
-            # Tall grass patches on eastern edge
-            if 32 <= x <= 36 and 6 <= y <= 12:
-                if random.random() > 0.2:
-                    viridian.set_tile(x, y, TileType.TALL_GRASS)
-            if 33 <= x <= 37 and 28 <= y <= 34:
-                if random.random() > 0.2:
-                    viridian.set_tile(x, y, TileType.TALL_GRASS)
-
-            # Tree clusters for natural feel
-            if (4 <= x <= 7 and 4 <= y <= 8):
-                if random.random() > 0.3:
-                    viridian.set_tile(x, y, TileType.TREE)
-            if (4 <= x <= 6 and 28 <= y <= 33):
-                if random.random() > 0.3:
-                    viridian.set_tile(x, y, TileType.TREE)
-
-    # Pokemon Center building (left side, ~8x6 area)
-    for by in range(10, 16):
-        for bx in range(5, 13):
-            if by == 10 or by == 15 or bx == 5 or bx == 12:
-                viridian.set_tile(bx, by, TileType.BUILDING_WALL)
-            else:
-                viridian.set_tile(bx, by, TileType.BUILDING_FLOOR)
-    viridian.set_tile(9, 15, TileType.DOOR)
-    # Roof decoration
-    for bx in range(6, 12):
-        viridian.set_tile(bx, 9, TileType.ROCK)
-
-    # Poke Mart building (right side, ~6x5 area)
-    for by in range(11, 16):
-        for bx in range(26, 32):
-            if by == 11 or by == 15 or bx == 26 or bx == 31:
-                viridian.set_tile(bx, by, TileType.BUILDING_WALL)
-            else:
-                viridian.set_tile(bx, by, TileType.BUILDING_FLOOR)
-    viridian.set_tile(28, 15, TileType.DOOR)
-    # Roof decoration
-    for bx in range(27, 31):
-        viridian.set_tile(bx, 10, TileType.ROCK)
-
-    # House 1 (upper left area)
-    for by in range(5, 10):
-        for bx in range(10, 16):
-            if by == 5 or by == 9 or bx == 10 or bx == 15:
-                viridian.set_tile(bx, by, TileType.BUILDING_WALL)
-            else:
-                viridian.set_tile(bx, by, TileType.BUILDING_FLOOR)
-    viridian.set_tile(12, 9, TileType.DOOR)
-
-    # House 2 (lower left area)
-    for by in range(25, 30):
-        for bx in range(8, 14):
-            if by == 25 or by == 29 or bx == 8 or bx == 13:
-                viridian.set_tile(bx, by, TileType.BUILDING_WALL)
-            else:
-                viridian.set_tile(bx, by, TileType.BUILDING_FLOOR)
-    viridian.set_tile(10, 29, TileType.DOOR)
-
-    # House 3 (right side, lower)
-    for by in range(24, 29):
-        for bx in range(24, 30):
-            if by == 24 or by == 28 or bx == 24 or bx == 29:
-                viridian.set_tile(bx, by, TileType.BUILDING_WALL)
-            else:
-                viridian.set_tile(bx, by, TileType.BUILDING_FLOOR)
-    viridian.set_tile(26, 28, TileType.DOOR)
-
-    # Small pond / water feature (south-east area)
-    for by in range(30, 33):
-        for bx in range(30, 34):
-            viridian.set_tile(bx, by, TileType.WATER)
-
-    # Flower beds around town
-    flower_spots_v = [
-        (7, 17), (8, 17), (12, 17), (13, 17),
-        (27, 17), (28, 17), (30, 17),
-        (15, 23), (16, 23), (22, 23), (23, 23),
+    buildings = [
+        (5, 11, 9, 7, 4, "viridian_pokecenter", "Pokemon Center", "pokecenter"),
+        (26, 11, 8, 7, 3, "viridian_mart", "Poke Mart", "mart"),
+        (6, 2, 6, 4, 2, "viridian_house_1", "Viridian House", "house"),
+        (26, 2, 6, 4, 2, "viridian_house_2", "Viridian House", "house"),
+        (8, 25, 6, 5, 2, "viridian_house_3", "Viridian House", "house"),
+        (24, 25, 6, 5, 2, "viridian_house_4", "Viridian House", "house"),
     ]
-    for fx, fy in flower_spots_v:
-        viridian.set_tile(fx, fy, TileType.FLOWER)
+    doors = {}
+    for bx, by, bw, bh, ddx, interior_id, name, kind in buildings:
+        door = _place_building(m, bx, by, bw, bh, ddx)
+        _link_building(m, interiors, door, interior_id, name, kind)
+        _connect_down(m, door[0], door[1] + 1)
+        doors[interior_id] = door
 
-    # Signs
-    viridian.set_tile(8, 16, TileType.SIGN)
-    viridian.add_object(MapObject(8, 16, "sign", {
-        "text": "Viridian City Pokemon Center\nHeal your Pokemon for free!"
-    }))
+    # Signs sit on the grass strip beside each building, facing the street
+    _add_sign(m, 14, 17, "Viridian City Pokemon Center\nHeal your Pokemon for free!")
+    _add_sign(m, 25, 17, "Viridian City Poke Mart\nFor all your Pokemon needs!")
+    _add_sign(m, 22, 22, "Viridian City\nThe Eternally Green Paradise.")
+    _add_sign(m, 22, 10, "Route 2 is closed for now.\nCome back another day.")
+    _add_sign(m, 17, 36, "South: Route 1\nPallet Town lies beyond.")
 
-    viridian.set_tile(28, 16, TileType.SIGN)
-    viridian.add_object(MapObject(28, 16, "sign", {
-        "text": "Viridian City Poke Mart\nFor all your Pokemon needs!"
-    }))
-
-    viridian.set_tile(20, 22, TileType.SIGN)
-    viridian.add_object(MapObject(20, 22, "sign", {
-        "text": "Viridian City\nThe Eternally Green Paradise"
-    }))
-
-    viridian.set_tile(20, 3, TileType.SIGN)
-    viridian.add_object(MapObject(20, 3, "sign", {
-        "text": "Route 2 - North\n(Currently closed)"
-    }))
-
-    # Warps - south exit to Route 1
-    for wx in range(18, 23):
-        viridian.add_warp(Warp(wx, 39, "route_1", wx, 1))
-
-    # Wild pokemon data for the tall grass patches
-    viridian.wild_pokemon_data = {
+    _seal_pockets(m, (GATE_X, 20))
+    m.wild_pokemon_data = {
         "grass": [
             {"species": "Pidgey", "levels": [3, 6]},
             {"species": "Rattata", "levels": [3, 5]},
-            {"species": "Nidoran", "levels": [4, 6]},
+            {"species": "Zubat", "levels": [4, 6]},
         ]
     }
+    m.background_music = "viridian_city.mp3"
+    return m, interiors
 
-    maps["viridian_city"] = viridian
 
+def create_sample_maps() -> Dict[str, Map]:
+    """Build every map in the game.
+
+    Tile layouts live here rather than in assets/maps/*.json -- the JSON files
+    carry only metadata (NPCs, wild Pokemon, and a mirror of the connections
+    for reference).
+    """
+    rng = random.Random(MAP_SEED)
+    maps: Dict[str, Map] = {}
+
+    town, town_interiors = _build_pallet_town(rng)
+    route = _build_route_1(rng)
+    viridian, viridian_interiors = _build_viridian_city(rng)
+
+    # Gates line up column for column, and each landing row sits one tile
+    # inside the destination's own gate row.
+    _link_edges(town, route, GATE_COLS, a_y=0, b_y=39, a_land_y=1, b_land_y=38)
+    _link_edges(route, viridian, GATE_COLS, a_y=0, b_y=39, a_land_y=1, b_land_y=38)
+
+    for built in (town, route, viridian):
+        maps[built.id] = built
+    maps.update(town_interiors)
+    maps.update(viridian_interiors)
+
+    problems = validate_maps(maps)
+    if problems:
+        raise AssertionError(
+            "map generation produced broken maps:\n  " + "\n  ".join(problems))
     return maps
+
+
+# ---------------------------------------------------------------------------
+# Validation
+# ---------------------------------------------------------------------------
+
+def validate_maps(maps: Dict[str, Map]) -> List[str]:
+    """Report the mistakes that break navigation.
+
+    Run on every build so a broken layout fails loudly instead of shipping as
+    a door that opens onto nothing or an exit walled in behind trees.
+    """
+    problems: List[str] = []
+
+    def check(condition: bool, message: str):
+        if not condition:
+            problems.append(message)
+
+    for map_id, m in maps.items():
+        for warp in m.warps:
+            check(m.is_walkable(warp.x, warp.y),
+                  f"{map_id}: warp at ({warp.x},{warp.y}) sits on a solid tile")
+
+            target = maps.get(warp.target_map)
+            check(target is not None,
+                  f"{map_id}: warp at ({warp.x},{warp.y}) targets unknown map "
+                  f"'{warp.target_map}'")
+            if target is None:
+                continue
+
+            check(target.is_walkable(warp.target_x, warp.target_y),
+                  f"{map_id}: warp at ({warp.x},{warp.y}) lands on a solid tile in "
+                  f"{warp.target_map} at ({warp.target_x},{warp.target_y})")
+            check(target.get_warp_at(warp.target_x, warp.target_y) is None,
+                  f"{map_id}: warp at ({warp.x},{warp.y}) lands on another warp in "
+                  f"{warp.target_map} -- the player would bounce straight back")
+            check(any(back.target_map == map_id for back in target.warps),
+                  f"{map_id}: warp at ({warp.x},{warp.y}) to {warp.target_map} is "
+                  f"one-way -- there is no way back")
+
+        for y in range(m.height):
+            for x in range(m.width):
+                tile = m.tiles[y][x]
+                if tile and tile.type == TileType.DOOR:
+                    check(m.get_warp_at(x, y) is not None,
+                          f"{map_id}: door at ({x},{y}) has no warp behind it")
+
+        for obj in m.objects:
+            if obj.object_type != "sign":
+                continue
+            tile = m.get_tile(obj.x, obj.y)
+            check(tile is not None and tile.type == TileType.SIGN,
+                  f"{map_id}: sign object at ({obj.x},{obj.y}) is not on a sign tile")
+            check(any(m.is_walkable(obj.x + dx, obj.y + dy)
+                      for dx, dy in ((0, 1), (0, -1), (1, 0), (-1, 0))),
+                  f"{map_id}: sign at ({obj.x},{obj.y}) cannot be read from anywhere")
+
+        # Every entrance must be reachable from every other one, or the player
+        # can walk through a door and be unable to get back to the rest of the
+        # map.
+        entrances = [(w.x, w.y) for w in m.warps]
+        if entrances:
+            reachable = flood_fill(m, entrances[0])
+            for x, y in entrances[1:]:
+                check((x, y) in reachable,
+                      f"{map_id}: warp at ({x},{y}) is cut off from the other exits")
+
+    return problems
+
+
+def flood_fill(m: Map, start: Tuple[int, int]) -> set:
+    """Every tile walkable from `start`, treating warp tiles as walkable."""
+    def passable(x: int, y: int) -> bool:
+        return m.is_walkable(x, y) or m.get_warp_at(x, y) is not None
+
+    seen = {start}
+    queue = deque([start])
+    while queue:
+        x, y = queue.popleft()
+        for dx, dy in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+            nxt = (x + dx, y + dy)
+            if nxt not in seen and 0 <= nxt[0] < m.width and 0 <= nxt[1] < m.height \
+                    and passable(*nxt):
+                seen.add(nxt)
+                queue.append(nxt)
+    return seen

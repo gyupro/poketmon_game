@@ -1,0 +1,37 @@
+{
+    "id": "viridian_mart",
+    "name": "Poke Mart",
+    "width": 11,
+    "height": 9,
+    "music": "pokemart.mp3",
+    "description": "Viridian City's Poke Mart. The clerk stands in the counter gap, straight up from the door.",
+    "wild_pokemon": null,
+    "npcs": [
+        {
+            "name": "Shopkeeper",
+            "x": 5,
+            "y": 1,
+            "sprite": "gentleman",
+            "dialogue": [
+                "Welcome to the Poke Mart!",
+                "Poke Balls, Potions, Antidotes -- we stock the lot.",
+                "Take your time looking around."
+            ],
+            "facing": "down",
+            "movement_type": "static",
+            "action": "shop"
+        },
+        {
+            "name": "Customer",
+            "x": 2,
+            "y": 5,
+            "sprite": "lass",
+            "dialogue": [
+                "Always carry a few Potions.",
+                "Running out halfway down a route is no fun at all."
+            ],
+            "facing": "right",
+            "movement_type": "static"
+        }
+    ]
+}

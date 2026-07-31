@@ -1,0 +1,23 @@
+{
+    "id": "viridian_house_2",
+    "name": "Viridian House",
+    "width": 11,
+    "height": 9,
+    "music": "viridian_city.mp3",
+    "description": "A resident's house in Viridian City.",
+    "wild_pokemon": null,
+    "npcs": [
+        {
+            "name": "Old Woman",
+            "x": 6,
+            "y": 4,
+            "sprite": "lass",
+            "dialogue": [
+                "My grandson set off on his journey last spring.",
+                "Not a word since. Trainers, honestly!"
+            ],
+            "facing": "down",
+            "movement_type": "static"
+        }
+    ]
+}

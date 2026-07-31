@@ -1,67 +1,78 @@
 {
     "id": "pallet_town",
     "name": "Pallet Town",
-    "width": 20,
-    "height": 20,
+    "width": 40,
+    "height": 30,
     "music": "pallet_town.mp3",
+    "description": "A quiet town of new beginnings. The gate north leads to Route 1. Tile layout and map connections are built in src/map.py; this file carries NPCs and encounter data only.",
     "wild_pokemon": null,
     "npcs": [
         {
             "name": "Professor Oak",
-            "x": 9,
-            "y": 9,
+            "x": 26,
+            "y": 15,
             "sprite": "prof_oak",
             "dialogue": [
                 "Hello there! Welcome to the world of Pokemon!",
                 "My name is Oak. People call me the Pokemon Professor!",
                 "This world is inhabited by creatures called Pokemon!",
-                "For some people, Pokemon are pets. Others use them for fights.",
-                "Myself... I study Pokemon as a profession."
+                "My lab is right behind me -- come in whenever you like.",
+                "Route 1 lies through the gate to the north. Mind the tall grass!"
             ],
             "facing": "down",
-            "movement_type": "wander",
-            "movement_range": 2,
+            "movement_type": "static",
             "item_gift": "pokedex"
         },
         {
             "name": "Gary",
-            "x": 14,
-            "y": 13,
+            "x": 28,
+            "y": 25,
             "sprite": "rival",
             "dialogue": [
                 "Hey! I'm Gary, Professor Oak's grandson!",
                 "I'm going to be the world's greatest Pokemon trainer!",
-                "You better not get in my way!"
+                "That's my house behind me. Not that you're invited."
             ],
-            "facing": "down",
-            "is_trainer": true,
-            "trainer_data": {
-                "team": [
-                    {"species": "Eevee", "level": 5}
-                ],
-                "reward_money": 100
-            }
+            "facing": "left",
+            "movement_type": "wander",
+            "movement_range": 2
         },
         {
             "name": "Young Boy",
-            "x": 6,
-            "y": 10,
+            "x": 10,
+            "y": 15,
             "sprite": "youngster",
             "dialogue": [
-                "Technology is amazing!",
-                "You can now store and recall Pokemon from PCs!"
+                "The Pokemon Center heals your whole team for free!",
+                "Just walk in through the door up there."
             ],
-            "facing": "down"
-        }
-    ],
-    "warps": [
+            "facing": "up",
+            "movement_type": "wander",
+            "movement_range": 2
+        },
         {
-            "x": 10,
-            "y": 0,
-            "target_map": "route_1",
-            "target_x": 10,
-            "target_y": 19
+            "name": "Townswoman",
+            "x": 13,
+            "y": 19,
+            "sprite": "lass",
+            "dialogue": [
+                "The pond here is my favourite spot in town.",
+                "It's so peaceful... nothing ever happens in Pallet Town."
+            ],
+            "facing": "left",
+            "movement_type": "static"
+        },
+        {
+            "name": "Gate Keeper",
+            "x": 17,
+            "y": 5,
+            "sprite": "gentleman",
+            "dialogue": [
+                "Heading north? That road runs straight through to Viridian City.",
+                "Stick to the path and the wild Pokemon will leave you be."
+            ],
+            "facing": "right",
+            "movement_type": "static"
         }
-    ],
-    "description": "A quiet town of new beginnings"
+    ]
 }

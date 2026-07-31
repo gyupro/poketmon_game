@@ -228,11 +228,15 @@ class Battle:
             )
         
         elif action_type == BattleAction.RUN:
+            if self.battle_type != BattleType.WILD:
+                # Can't run from trainer battles -- reject without consuming a turn
+                self.add_to_log("No! There's no running from a Trainer battle!")
+                return False
             self.player_action = TurnAction(
                 "run", self.player_pokemon,
                 priority=6  # Running has high priority
             )
-        
+
         else:
             return False
         

@@ -4,6 +4,7 @@
     "width": 40,
     "height": 40,
     "music": "viridian_city.mp3",
+    "description": "The Eternally Green Paradise. One avenue runs from the Route 1 gate in the south up to the closed Route 2 road. Tile layout and map connections are built in src/map.py; this file carries NPCs and encounter data only.",
     "wild_pokemon": {
         "encounter_rate": 8,
         "pokemon": [
@@ -20,7 +21,7 @@
                 "encounter_rate": 35
             },
             {
-                "species": "Nidoran",
+                "species": "Zubat",
                 "min_level": 4,
                 "max_level": 6,
                 "encounter_rate": 25
@@ -29,39 +30,25 @@
     },
     "npcs": [
         {
-            "name": "Nurse Joy",
-            "x": 9,
-            "y": 15,
-            "sprite": "nurse_joy",
+            "name": "Route Guard",
+            "x": 20,
+            "y": 8,
+            "sprite": "trainer",
             "dialogue": [
-                "Welcome to the Pokemon Center! Let me heal your Pokemon.",
-                "Your Pokemon are all better now!"
+                "Sorry, the road north to Route 2 is closed for now.",
+                "Come back another day!"
             ],
             "facing": "down",
-            "movement_type": "static",
-            "is_healer": true,
-            "action": "heal"
-        },
-        {
-            "name": "Shopkeeper",
-            "x": 28,
-            "y": 15,
-            "sprite": "gentleman",
-            "dialogue": [
-                "Welcome to the Poke Mart! What can I get for you?"
-            ],
-            "facing": "down",
-            "movement_type": "static",
-            "action": "shop"
+            "movement_type": "static"
         },
         {
             "name": "Old Man",
             "x": 20,
-            "y": 20,
+            "y": 25,
             "sprite": "gentleman",
             "dialogue": [
-                "Viridian City is known for its beautiful forest to the north.",
-                "But the path has been blocked lately..."
+                "Viridian City is known for the forest to the north.",
+                "Shame the road up there has been closed lately..."
             ],
             "facing": "down",
             "movement_type": "wander",
@@ -69,49 +56,40 @@
         },
         {
             "name": "Young Girl",
-            "x": 14,
-            "y": 25,
+            "x": 15,
+            "y": 19,
             "sprite": "lass",
             "dialogue": [
-                "I love my Jigglypuff! It sings me to sleep every night!",
-                "Sometimes that's not a good thing though..."
+                "The Pokemon Center is just up there, past the sign.",
+                "They patch up your team for nothing at all!"
             ],
-            "facing": "down",
+            "facing": "up",
             "movement_type": "wander",
             "movement_range": 1
         },
         {
-            "name": "Fisherman",
-            "x": 33,
-            "y": 29,
+            "name": "Shopper",
+            "x": 30,
+            "y": 19,
             "sprite": "hiker",
             "dialogue": [
-                "I've been fishing in this pond all day.",
-                "Haven't caught anything yet... maybe I need a better rod."
+                "The Mart up the road stocks Poke Balls and Potions.",
+                "Stock up before you head out of town!"
             ],
-            "facing": "down",
+            "facing": "up",
             "movement_type": "static"
         },
         {
-            "name": "Route Guard",
-            "x": 20,
-            "y": 3,
-            "sprite": "trainer",
+            "name": "Fisherman",
+            "x": 28,
+            "y": 31,
+            "sprite": "hiker",
             "dialogue": [
-                "The road ahead is closed for now. Come back later!"
+                "I've been fishing all day and caught nothing.",
+                "Maybe I need a better rod..."
             ],
-            "facing": "down",
+            "facing": "right",
             "movement_type": "static"
         }
-    ],
-    "warps": [
-        {
-            "x": 20,
-            "y": 39,
-            "target_map": "route_1",
-            "target_x": 20,
-            "target_y": 1
-        }
-    ],
-    "description": "A beautiful city with a Pokemon Center and Poke Mart"
+    ]
 }

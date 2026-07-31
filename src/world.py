@@ -79,22 +79,19 @@ class World:
 
         # Day/night tint
         self.day_night_enabled = True
+        self._tint_cache_surface: Optional[pygame.Surface] = None
+        self._tint_cache_key = None
         
-        # NPCs for each map — load from JSON with hardcoded fallback
-        self.npcs: Dict[str, List[NPC]] = {}
-        fallback_creators = {
-            "pallet_town": self._create_pallet_town_npcs,
-            "route_1": self._create_route_1_npcs,
-            "pokecenter_1": self._create_pokecenter_npcs,
-            "viridian_city": self._create_viridian_city_npcs,
+        # NPCs come from the map JSON files, which are the single source of
+        # truth for who stands where. There used to be a second hardcoded copy
+        # per map; it drifted out of step with the layouts and left NPCs
+        # standing inside trees, so it is gone.
+        self.npcs: Dict[str, List[NPC]] = {
+            map_id: (self._load_npcs_from_json(map_id) or [])
+            for map_id in self.maps
         }
-        for map_id, fallback_fn in fallback_creators.items():
-            loaded = self._load_npcs_from_json(map_id)
-            if loaded is not None:
-                self.npcs[map_id] = loaded
-            else:
-                self.npcs[map_id] = fallback_fn()
-        
+
+
         # Interaction state
         self.current_dialogue: Optional[List[str]] = None
         self.dialogue_index = 0
@@ -159,254 +156,6 @@ class World:
 
         return npcs
 
-    def _create_pallet_town_npcs(self) -> List[NPC]:
-        """Create NPCs for Pallet Town (hardcoded fallback)."""
-        npcs = []
-        
-        # Professor Oak
-        oak = NPC(
-            name="Professor Oak",
-            x=9, y=9,
-            sprite="prof_oak",
-            dialogue=[
-                "Hello there! Welcome to the world of Pokemon!",
-                "My name is Oak. People call me the Pokemon Professor!",
-                "This world is inhabited by creatures called Pokemon!",
-                "For some people, Pokemon are pets. Others use them for fights.",
-                "Myself... I study Pokemon as a profession."
-            ],
-            item_gift="pokedex",
-            movement_type="wander",
-            movement_range=2
-        )
-        npcs.append(oak)
-        
-        # Rival
-        rival = NPC(
-            name="Gary",
-            x=14, y=13,
-            sprite="rival",
-            dialogue=[
-                "Hey! I'm Gary, Professor Oak's grandson!",
-                "I'm going to be the world's greatest Pokemon trainer!",
-                "You better not get in my way!"
-            ],
-            is_trainer=True,
-            trainer_data={
-                "team": [
-                    {"species": "Eevee", "level": 5}
-                ],
-                "reward_money": 100
-            }
-        )
-        npcs.append(rival)
-        
-        # Town Kid
-        kid = NPC(
-            name="Young Boy",
-            x=6, y=10,
-            sprite="youngster",
-            dialogue=[
-                "Technology is amazing!",
-                "You can now store and recall Pokemon from PCs!"
-            ]
-        )
-        npcs.append(kid)
-        
-        return npcs
-    
-    def _create_route_1_npcs(self) -> List[NPC]:
-        """Create NPCs for Route 1."""
-        npcs = []
-
-        # Youngster Joey - middle of route on the left path section
-        youngster_joey = NPC(
-            name="Youngster Joey",
-            x=14, y=20,
-            sprite="youngster",
-            dialogue=[
-                "Hey! You look like a Pokemon trainer!"
-            ],
-            facing_direction="left",
-            is_trainer=True,
-            trainer_data={
-                "team": [
-                    {"species_id": 19, "level": 4}   # Rattata
-                ],
-                "reward_money": 80,
-                "sight_range": 3,
-                "defeated_flag": "trainer_youngster_joey",
-                "dialog_before": "Hey! You look like a Pokemon trainer!",
-                "dialog_after": "You're pretty good..."
-            }
-        )
-        npcs.append(youngster_joey)
-
-        # Bug Catcher Rick - upper section of route
-        bug_catcher = NPC(
-            name="Bug Catcher Rick",
-            x=19, y=6,
-            sprite="bug_catcher",
-            dialogue=[
-                "My bug Pokemon are the best!"
-            ],
-            facing_direction="down",
-            is_trainer=True,
-            trainer_data={
-                "team": [
-                    {"species_id": 10, "level": 3},  # Caterpie
-                    {"species_id": 13, "level": 3}   # Weedle
-                ],
-                "reward_money": 60,
-                "sight_range": 4,
-                "defeated_flag": "trainer_bug_catcher_rick",
-                "dialog_before": "My bug Pokemon are the best!",
-                "dialog_after": "Aww, my bugs lost..."
-            }
-        )
-        npcs.append(bug_catcher)
-        
-        # Item NPC
-        item_guy = NPC(
-            name="Helpful Man",
-            x=9, y=15,
-            sprite="gentleman",
-            dialogue=[
-                "Are you going to Viridian City?",
-                "Here, take this Potion. It might help you!"
-            ],
-            item_gift="potion"
-        )
-        npcs.append(item_guy)
-        
-        return npcs
-    
-    def _create_pokecenter_npcs(self) -> List[NPC]:
-        """Create NPCs for Pokemon Center."""
-        npcs = []
-        
-        # Nurse Joy
-        nurse_joy = NPC(
-            name="Nurse Joy",
-            x=7, y=5,
-            sprite="nurse_joy",
-            dialogue=[
-                "Welcome to the Pokemon Center!",
-                "Would you like me to heal your Pokemon?",
-                "...healing complete! Your Pokemon are fully healed!",
-                "We hope to see you again!"
-            ],
-            facing_direction="down",
-            movement_type="static"
-        )
-        # Mark as special healing NPC
-        nurse_joy.is_healer = True
-        npcs.append(nurse_joy)
-        
-        # PC User
-        pc_user = NPC(
-            name="Trainer",
-            x=3, y=8,
-            sprite="trainer",
-            dialogue=[
-                "The PC is great for storing extra Pokemon!",
-                "You can store up to 30 Pokemon in each box."
-            ],
-            facing_direction="up"
-        )
-        npcs.append(pc_user)
-        
-        return npcs
-    
-    def _create_viridian_city_npcs(self) -> List[NPC]:
-        """Create NPCs for Viridian City."""
-        npcs = []
-
-        # Nurse Joy at Pokemon Center
-        nurse_joy = NPC(
-            name="Nurse Joy",
-            x=9, y=15,
-            sprite="nurse_joy",
-            dialogue=[
-                "Welcome to the Pokemon Center! Let me heal your Pokemon.",
-                "Your Pokemon are all better now!"
-            ],
-            facing_direction="down",
-            movement_type="static",
-            is_healer=True,
-            action="heal"
-        )
-        npcs.append(nurse_joy)
-
-        # Shopkeeper at Poke Mart
-        shopkeeper = NPC(
-            name="Shopkeeper",
-            x=28, y=15,
-            sprite="gentleman",
-            dialogue=[
-                "Welcome to the Poke Mart! What can I get for you?"
-            ],
-            facing_direction="down",
-            movement_type="static",
-            action="shop"
-        )
-        npcs.append(shopkeeper)
-
-        # Old Man townsperson
-        old_man = NPC(
-            name="Old Man",
-            x=20, y=20,
-            sprite="gentleman",
-            dialogue=[
-                "Viridian City is known for its beautiful forest to the north.",
-                "But the path has been blocked lately..."
-            ],
-            movement_type="wander",
-            movement_range=2
-        )
-        npcs.append(old_man)
-
-        # Young Girl townsperson
-        young_girl = NPC(
-            name="Young Girl",
-            x=14, y=25,
-            sprite="lass",
-            dialogue=[
-                "I love my Jigglypuff! It sings me to sleep every night!",
-                "Sometimes that's not a good thing though..."
-            ],
-            movement_type="wander",
-            movement_range=1
-        )
-        npcs.append(young_girl)
-
-        # Fisherman near the pond
-        fisherman = NPC(
-            name="Fisherman",
-            x=33, y=29,
-            sprite="hiker",
-            dialogue=[
-                "I've been fishing in this pond all day.",
-                "Haven't caught anything yet... maybe I need a better rod."
-            ],
-            movement_type="static"
-        )
-        npcs.append(fisherman)
-
-        # Route Guard blocking north exit
-        route_guard = NPC(
-            name="Route Guard",
-            x=20, y=3,
-            sprite="trainer",
-            dialogue=[
-                "The road ahead is closed for now. Come back later!"
-            ],
-            facing_direction="down",
-            movement_type="static"
-        )
-        npcs.append(route_guard)
-
-        return npcs
 
     def update(self, dt: float, player: Player):
         """Update world state."""
@@ -518,23 +267,38 @@ class World:
                 self.map_transition_active = False
                 self.map_transition_phase = "none"
 
+    def _camera_for(self, player: Player) -> Tuple[float, float]:
+        """Where the camera wants to be: on the player, but inside the map.
+
+        A map smaller than the window (every building interior) is centred
+        instead of clamped to the top-left, which used to leave the room in
+        the corner with a band of black beside it.
+        """
+        map_w = self.current_map.width * self.current_map.tile_size
+        map_h = self.current_map.height * self.current_map.tile_size
+
+        if map_w <= self.screen_width:
+            cam_x = (map_w - self.screen_width) / 2.0
+        else:
+            cam_x = max(0.0, min(player.pixel_x - self.screen_width / 2.0,
+                                 float(map_w - self.screen_width)))
+
+        if map_h <= self.screen_height:
+            cam_y = (map_h - self.screen_height) / 2.0
+        else:
+            cam_y = max(0.0, min(player.pixel_y - self.screen_height / 2.0,
+                                 float(map_h - self.screen_height)))
+
+        return cam_x, cam_y
+
     def _update_camera(self, dt: float, player: Player):
         """Update camera position with smooth lerp following."""
-        # Calculate target position centered on player
-        target_x = player.pixel_x - self.screen_width // 2
-        target_y = player.pixel_y - self.screen_height // 2
-
-        # Clamp target to map bounds (prevent showing void)
-        max_x = max(0, self.current_map.width * self.current_map.tile_size - self.screen_width)
-        max_y = max(0, self.current_map.height * self.current_map.tile_size - self.screen_height)
-
-        clamped_x = max(0, min(target_x, max_x))
-        clamped_y = max(0, min(target_y, max_y))
+        target_x, target_y = self._camera_for(player)
 
         # Smooth lerp interpolation
         lerp_factor = min(1.0, self.camera_lerp_speed * dt)
-        self.camera_x += (clamped_x - self.camera_x) * lerp_factor
-        self.camera_y += (clamped_y - self.camera_y) * lerp_factor
+        self.camera_x += (target_x - self.camera_x) * lerp_factor
+        self.camera_y += (target_y - self.camera_y) * lerp_factor
 
     def _update_ambient(self, dt: float, player: Player):
         """Update ambient particle effects."""
@@ -806,12 +570,7 @@ class World:
         player.target_y = player.pixel_y
 
         # Snap camera to new position immediately
-        target_cx = player.pixel_x - self.screen_width // 2
-        target_cy = player.pixel_y - self.screen_height // 2
-        max_cx = max(0, self.current_map.width * self.current_map.tile_size - self.screen_width)
-        max_cy = max(0, self.current_map.height * self.current_map.tile_size - self.screen_height)
-        self.camera_x = float(max(0, min(target_cx, max_cx)))
-        self.camera_y = float(max(0, min(target_cy, max_cy)))
+        self.camera_x, self.camera_y = self._camera_for(player)
 
         # Reset encounter counters
         self.steps_in_grass = 0
@@ -857,8 +616,9 @@ class World:
         # Draw ambient particles
         self._render_ambient(screen)
 
-        # Day/night tint overlay
-        if self.day_night_enabled:
+        # Day/night tint overlay -- outdoors only; a building interior is lit
+        # by its own lamps, so tinting it at dusk just made the room look broken
+        if self.day_night_enabled and not self.current_map.indoor:
             self._render_day_night_tint(screen)
 
         # Draw trainer alert "!" indicator
@@ -930,6 +690,15 @@ class World:
         pygame.draw.ellipse(shadow_surf, (0, 0, 0, 50),
                             pygame.Rect(5, 0, ts - 8, 8))
         screen.blit(shadow_surf, (sx - 1, sy + ts - 5))
+
+        # --- Contrast ring behind the sprite so it doesn't camouflage against
+        # tiles of a similar color (e.g. a green-shirted NPC standing in grass) ---
+        ring_color = (255, 210, 90) if (npc.is_trainer and not npc.defeated) else (20, 20, 30)
+        ring_alpha = 70 if (npc.is_trainer and not npc.defeated) else 45
+        ring_surf = pygame.Surface((ts + 8, ts + 8), pygame.SRCALPHA)
+        pygame.draw.ellipse(ring_surf, (*ring_color, ring_alpha),
+                            pygame.Rect(0, 6, ts + 8, ts - 2))
+        screen.blit(ring_surf, (sx - 4, sy_bob - 3))
 
         # --- Shoes ---
         body_y = sy_bob + 13
@@ -1197,11 +966,14 @@ class World:
                 screen.blit(text_surface, (box_rect.x + 20, y))
                 y += 25
             
-            # Draw continue indicator
+            # Draw continue indicator (drawn as a vector triangle, not a font glyph --
+            # pygame's default font has no glyph for the down-arrow character)
             if self.dialogue_index < len(self.current_dialogue) - 1:
-                indicator = font.render("▼", True, (0, 0, 0))
-                screen.blit(indicator, 
-                          (box_rect.right - 30, box_rect.bottom - 25))
+                bounce = int(2 * math.sin(pygame.time.get_ticks() * 0.006))
+                tip_x, tip_y = box_rect.right - 22, box_rect.bottom - 15 + bounce
+                pygame.draw.polygon(screen, (0, 0, 0), [
+                    (tip_x - 6, tip_y - 5), (tip_x + 6, tip_y - 5), (tip_x, tip_y + 4)
+                ])
     
     def _render_ambient(self, screen: pygame.Surface):
         """Render ambient particle effects (leaf, sparkle)."""
@@ -1244,9 +1016,13 @@ class World:
             tint_color = (30, 30, 80)
             tint_alpha = 40
 
-        tint_surf = pygame.Surface((self.screen_width, self.screen_height), pygame.SRCALPHA)
-        tint_surf.fill((*tint_color, tint_alpha))
-        screen.blit(tint_surf, (0, 0))
+        cache_key = (tint_color, tint_alpha, self.screen_width, self.screen_height)
+        if self._tint_cache_key != cache_key:
+            self._tint_cache_surface = pygame.Surface(
+                (self.screen_width, self.screen_height), pygame.SRCALPHA)
+            self._tint_cache_surface.fill((*tint_color, tint_alpha))
+            self._tint_cache_key = cache_key
+        screen.blit(self._tint_cache_surface, (0, 0))
 
     def _render_area_banner(self, screen: pygame.Surface):
         """Render a stylish area name banner that fades in and out."""

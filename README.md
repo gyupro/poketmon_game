@@ -68,7 +68,9 @@ A feature-rich Pokemon-style RPG game built with Python and Pygame, featuring tu
 ### Prerequisites
 - Python 3.10+
 
-### Setup
+**Windows note:** if typing `python --version` in a terminal just prints the word `Python` (or opens the Microsoft Store), that means there's no real Python installed yet — it's the Windows Store alias stub. Either install Python from [python.org](https://www.python.org/downloads/) (check "Add python.exe to PATH" during setup) **or** use `uv` (see Option B below), which manages its own Python and sidesteps this entirely.
+
+### Option A: Standard Python + pip
 
 ```bash
 git clone https://github.com/gyupro/poketmon_game.git
@@ -77,7 +79,25 @@ pip install -r requirements.txt
 python main.py
 ```
 
+### Option B: uv (no separate Python install needed)
+
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) once, then:
+
+```bash
+git clone https://github.com/gyupro/poketmon_game.git
+cd poketmon_game
+uv run --with pygame==2.5.2 --with requests==2.31.0 --with pillow==10.2.0 python main.py
+```
+
+`uv` downloads a private Python + the three dependencies on first run (a few seconds), then launches the game. This is the exact command used to verify the game in this repo.
+
 Dependencies: pygame, requests, pillow
+
+### Troubleshooting
+
+- **Window doesn't appear / seems to hang immediately**: on Windows, run from a normal terminal (PowerShell/cmd), not from an environment without a display.
+- **`ModuleNotFoundError: pygame`**: dependencies weren't installed — re-run the `pip install` or `uv run --with ...` command above from the project's root folder (`poketmon_game/`).
+- **`python` prints `Python` and nothing else / opens the Store**: see the Windows note above — use `uv`, or install Python from python.org.
 
 ## Controls
 
@@ -135,6 +155,12 @@ poketmon_game/
 ```bash
 pip install pytest
 python -m pytest tests/ -v
+```
+
+Or with `uv` (no local Python/pytest install needed):
+
+```bash
+uv run --with pygame==2.5.2 --with requests==2.31.0 --with pillow==10.2.0 --with pytest python -m pytest tests/ -v
 ```
 
 ## Disclaimer

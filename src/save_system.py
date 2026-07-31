@@ -8,6 +8,8 @@ import threading
 from dataclasses import dataclass, field, asdict
 from typing import Dict, List, Optional
 
+from .map import START_MAP, START_X, START_Y
+
 
 @dataclass
 class SaveData:
@@ -15,9 +17,9 @@ class SaveData:
 
     version: int = 1
     player_name: str = ""
-    player_x: int = 10
-    player_y: int = 10
-    map_id: str = "pallet_town"
+    player_x: int = START_X
+    player_y: int = START_Y
+    map_id: str = START_MAP
     facing: str = "down"
     team: List[dict] = field(default_factory=list)
     bag: Dict[str, int] = field(default_factory=dict)
@@ -28,9 +30,9 @@ class SaveData:
     play_time: float = 0.0
     event_flags: Dict[str, bool] = field(default_factory=dict)
     defeated_trainers: List[str] = field(default_factory=list)
-    last_healed_map: str = "pallet_town"
-    last_healed_x: int = 10
-    last_healed_y: int = 10
+    last_healed_map: str = START_MAP
+    last_healed_x: int = START_X
+    last_healed_y: int = START_Y
 
     @classmethod
     def new_game(cls, name: str, starter_id: int = 4) -> "SaveData":
@@ -68,6 +70,11 @@ class SaveSystem:
     def __init__(self, save_dir: str = "saves") -> None:
         self._save_dir = save_dir
         os.makedirs(self._save_dir, exist_ok=True)
+        # Two background saves overlapping would race on the same temp file.
+        # On Windows that surfaces as os.replace raising PermissionError,
+        # which is easy to trigger by walking through a couple of doors in
+        # quick succession -- each map change auto-saves.
+        self._write_lock = threading.Lock()
 
     def _slot_path(self, slot: int) -> str:
         return os.path.join(self._save_dir, f"slot_{slot}.json")
@@ -81,9 +88,10 @@ class SaveSystem:
         final_path = self._slot_path(slot)
         tmp_path = final_path + ".tmp"
         payload = data.to_dict()
-        with open(tmp_path, "w") as f:
-            json.dump(payload, f, indent=2)
-        os.replace(tmp_path, final_path)
+        with self._write_lock:
+            with open(tmp_path, "w") as f:
+                json.dump(payload, f, indent=2)
+            os.replace(tmp_path, final_path)
 
     def save_async(self, slot: int, data: SaveData) -> threading.Thread:
         """Non-blocking save via a background thread."""

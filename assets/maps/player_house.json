@@ -1,0 +1,24 @@
+{
+    "id": "player_house",
+    "name": "Your House",
+    "width": 11,
+    "height": 9,
+    "music": "pallet_town.mp3",
+    "description": "The player's house in Pallet Town.",
+    "wild_pokemon": null,
+    "npcs": [
+        {
+            "name": "Mom",
+            "x": 6,
+            "y": 4,
+            "sprite": "lass",
+            "dialogue": [
+                "Oh, there you are!",
+                "All trainers leave home some day. It said so on TV.",
+                "Go on then -- and be sure to rest when your Pokemon get tired."
+            ],
+            "facing": "down",
+            "movement_type": "static"
+        }
+    ]
+}

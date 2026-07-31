@@ -14,7 +14,7 @@ from ..player import Player
 from ..battle import Battle, BattleState, BattleAction
 from ..pokemon import Pokemon, Move
 
-from .components import Colors, Button, HealthBar, ExperienceBar
+from .components import Colors, Button, HealthBar, ExperienceBar, load_sprite
 from .battle_ui import BattleUI, PokemonInfoPanel, BattleMenu
 from .menu_ui import MenuUI
 from .world_hud import WorldHUD
@@ -90,19 +90,7 @@ class UI:
     # ---- sprite loading ----
 
     def load_sprite(self, sprite_path: str, size: Optional[Tuple[int, int]] = None) -> Optional[pygame.Surface]:
-        cache_key = f"{sprite_path}_{size}" if size else sprite_path
-        if cache_key in self.sprite_cache:
-            return self.sprite_cache[cache_key]
-        try:
-            if os.path.exists(sprite_path):
-                sprite = pygame.image.load(sprite_path)
-                if size:
-                    sprite = pygame.transform.scale(sprite, size)
-                self.sprite_cache[cache_key] = sprite
-                return sprite
-        except Exception:
-            pass
-        return None
+        return load_sprite(self.sprite_cache, sprite_path, size)
 
     # ---- state management ----
 

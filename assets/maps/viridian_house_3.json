@@ -1,0 +1,23 @@
+{
+    "id": "viridian_house_3",
+    "name": "Viridian House",
+    "width": 11,
+    "height": 9,
+    "music": "viridian_city.mp3",
+    "description": "A resident's house in Viridian City.",
+    "wild_pokemon": null,
+    "npcs": [
+        {
+            "name": "Bug Fan",
+            "x": 6,
+            "y": 4,
+            "sprite": "bug_catcher",
+            "dialogue": [
+                "There are Caterpie all over Route 1 right now.",
+                "Catch one before they all evolve!"
+            ],
+            "facing": "down",
+            "movement_type": "static"
+        }
+    ]
+}

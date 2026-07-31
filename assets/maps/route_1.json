@@ -1,9 +1,10 @@
 {
     "id": "route_1",
     "name": "Route 1",
-    "width": 20,
-    "height": 20,
+    "width": 40,
+    "height": 40,
     "music": "route_1.mp3",
+    "description": "A peaceful path between Pallet Town (south gate) and Viridian City (north gate). Tile layout and map connections are built in src/map.py; this file carries NPCs and encounter data only.",
     "wild_pokemon": {
         "encounter_rate": 10,
         "pokemon": [
@@ -29,14 +30,28 @@
     },
     "npcs": [
         {
+            "name": "Helpful Man",
+            "x": 20,
+            "y": 35,
+            "sprite": "gentleman",
+            "dialogue": [
+                "Are you headed for Viridian City?",
+                "Here, take this Potion. It might help you along the way!"
+            ],
+            "facing": "down",
+            "movement_type": "static",
+            "item_gift": "potion"
+        },
+        {
             "name": "Youngster Joey",
             "x": 14,
-            "y": 20,
+            "y": 22,
             "sprite": "youngster",
             "dialogue": [
                 "Hey! You look like a Pokemon trainer!"
             ],
-            "facing": "left",
+            "facing": "down",
+            "movement_type": "static",
             "is_trainer": true,
             "trainer_data": {
                 "team": [
@@ -52,12 +67,13 @@
         {
             "name": "Bug Catcher Rick",
             "x": 19,
-            "y": 6,
+            "y": 8,
             "sprite": "bug_catcher",
             "dialogue": [
                 "My bug Pokemon are the best!"
             ],
             "facing": "down",
+            "movement_type": "static",
             "is_trainer": true,
             "trainer_data": {
                 "team": [
@@ -70,35 +86,6 @@
                 "dialog_before": "My bug Pokemon are the best!",
                 "dialog_after": "Aww, my bugs lost..."
             }
-        },
-        {
-            "name": "Helpful Man",
-            "x": 9,
-            "y": 15,
-            "sprite": "gentleman",
-            "dialogue": [
-                "Are you going to Viridian City?",
-                "Here, take this Potion. It might help you!"
-            ],
-            "facing": "down",
-            "item_gift": "potion"
         }
-    ],
-    "warps": [
-        {
-            "x": 10,
-            "y": 19,
-            "target_map": "pallet_town",
-            "target_x": 10,
-            "target_y": 1
-        },
-        {
-            "x": 10,
-            "y": 0,
-            "target_map": "viridian_city",
-            "target_x": 10,
-            "target_y": 19
-        }
-    ],
-    "description": "A peaceful path between Pallet Town and Viridian City"
+    ]
 }

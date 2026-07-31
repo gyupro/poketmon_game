@@ -1,0 +1,23 @@
+{
+    "id": "viridian_house_1",
+    "name": "Viridian House",
+    "width": 11,
+    "height": 9,
+    "music": "viridian_city.mp3",
+    "description": "A resident's house in Viridian City.",
+    "wild_pokemon": null,
+    "npcs": [
+        {
+            "name": "Resident",
+            "x": 6,
+            "y": 4,
+            "sprite": "gentleman",
+            "dialogue": [
+                "Viridian City is the greenest place in Kanto.",
+                "Every hedge and every tree, tended by hand."
+            ],
+            "facing": "down",
+            "movement_type": "static"
+        }
+    ]
+}

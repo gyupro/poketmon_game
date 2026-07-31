@@ -8,11 +8,11 @@ import math
 from typing import Optional, List, Tuple, Dict
 
 from ..pokemon import Pokemon, StatusCondition, PokemonType, Move
-from ..battle import Battle, BattleState, BattleAction
+from ..battle import Battle, BattleState, BattleAction, BattleType
 from ..battle_animations import BattleAnimationManager, AnimationType
 
 from .components import (
-    Colors, Button, HealthBar, ExperienceBar,
+    Colors, Button, HealthBar, ExperienceBar, draw_icon, load_sprite,
     _draw_rounded_rect, _draw_shadow, _draw_gradient_rect, _draw_type_badge,
 )
 from .dialog import DialogBox
@@ -32,7 +32,7 @@ class PokemonInfoPanel:
 
         hp_y = y + 38
         self.health_bar = HealthBar(x + 14, hp_y, width - 80, 10)
-        self.exp_bar = ExperienceBar(x + 14, hp_y + 18, width - 28, 5) if is_player else None
+        self.exp_bar = ExperienceBar(x + 14, hp_y + 34, width - 28, 5) if is_player else None
 
     def set_pokemon(self, pokemon: Pokemon):
         self.pokemon = pokemon
@@ -105,7 +105,7 @@ class PokemonInfoPanel:
         self.health_bar.draw(screen, show_text=True)
         if self.is_player and self.exp_bar:
             exp_label = font_tiny.render("EXP", True, Colors.TEXT_SECONDARY)
-            screen.blit(exp_label, (self.rect.x + 14, self.exp_bar.rect.y - 1))
+            screen.blit(exp_label, (self.rect.x + 14, self.exp_bar.rect.y - 15))
             self.exp_bar.draw(screen)
 
 
@@ -126,7 +126,7 @@ class BattleMenu:
 
         btn_w = (width - 60) // 2
         btn_h = 40
-        icons = ["\u25B6", "\u2605", "\u25CF", "\u2192"]  # play, star, circle, arrow
+        icons = ["play", "bag", "pokeball", "arrow"]
         labels = ["FIGHT", "BAG", "POKEMON", "RUN"]
         self.main_buttons: List[Button] = []
         for i, (label, icon) in enumerate(zip(labels, icons)):
@@ -138,6 +138,10 @@ class BattleMenu:
 
     def set_battle(self, battle: Battle):
         self.battle = battle
+        run_button = self.main_buttons[3]
+        can_run = battle.battle_type == BattleType.WILD
+        run_button.enabled = can_run
+        run_button.text_color = Colors.TEXT_PRIMARY if can_run else Colors.DARK_GRAY
 
     def handle_event(self, event: pygame.event.Event) -> Optional[Tuple[BattleAction, Dict]]:
         if not self.battle or self.battle.is_over:
@@ -324,7 +328,7 @@ class BattleUI:
             40, self.screen_height - 320, self.screen_width - 80, 140
         )
         self.player_info_panel = PokemonInfoPanel(
-            self.screen_width - 350, self.screen_height - 440, 300, 100, True
+            self.screen_width - 350, self.screen_height - 460, 300, 118, True
         )
         self.opponent_info_panel = PokemonInfoPanel(50, 50, 300, 80, False)
         self.player_sprite_pos = (200, self.screen_height - 480)
@@ -332,19 +336,14 @@ class BattleUI:
         self.battle_animation_manager = BattleAnimationManager()
 
     def load_sprite(self, sprite_path: str, size=None):
-        cache_key = f"{sprite_path}_{size}" if size else sprite_path
-        if cache_key in self.sprite_cache:
-            return self.sprite_cache[cache_key]
-        try:
-            if os.path.exists(sprite_path):
-                sprite = pygame.image.load(sprite_path)
-                if size:
-                    sprite = pygame.transform.scale(sprite, size)
-                self.sprite_cache[cache_key] = sprite
-                return sprite
-        except Exception:
-            pass
-        return None
+        return load_sprite(self.sprite_cache, sprite_path, size)
+
+    def get_portrait(self, pokemon, size=(150, 150)) -> Optional[pygame.Surface]:
+        """Front-facing sprite for a Pokemon, used on the VS screen."""
+        if not pokemon:
+            return None
+        path = os.path.join("assets", "sprites", f"{pokemon.species_id}_normal.png")
+        return self.load_sprite(path, size)
 
     def update(self, dt: float, game=None, time_val: float = 0.0):
         self.battle_dialog.update(dt)
@@ -391,11 +390,14 @@ class BattleUI:
             self._draw_battle_content(surface, battle, time_val)
         self.battle_animation_manager.render(surface)
 
-        # VS screen overlay
+        # VS screen overlay -- show both combatants' portraits on it, otherwise
+        # the whole battle intro is a blank two-tone wipe with nothing on it.
         player_name = battle.player_pokemon.nickname if battle.player_pokemon else ""
         opponent_name = battle.opponent_pokemon.species_name if battle.opponent_pokemon else ""
         self.battle_animation_manager.render_vs_screen(
-            surface, player_name, opponent_name)
+            surface, player_name, opponent_name,
+            self.get_portrait(battle.player_pokemon),
+            self.get_portrait(battle.opponent_pokemon))
 
         # Battle fade-in overlay
         if self._battle_fade_alpha > 0:
@@ -543,10 +545,15 @@ class BattleUI:
             hl_c = tuple(min(255, c + 80) for c in pcolor)
             pygame.draw.circle(surface, hl_c, (position[0] - 12, position[1] - 16), 14)
             pygame.draw.circle(surface, Colors.BLACK, position, 48, 3)
-            shadow_text = self.font_small.render(pokemon.species_name, True, (0, 0, 0))
-            surface.blit(shadow_text, shadow_text.get_rect(center=(position[0] + 1, position[1] + 1)))
-            ns = self.font_small.render(pokemon.species_name, True, Colors.WHITE)
-            surface.blit(ns, ns.get_rect(center=position))
+            # Simplified pokeball glyph in place of missing sprite art (instead of
+            # cramming the species name inside the small circle, which overlapped
+            # illegibly) -- the name is shown separately in the info panel already.
+            draw_icon(surface, "pokeball", position, 40, (255, 255, 255))
+            name_label = self.font_small.render(pokemon.species_name, True, Colors.WHITE)
+            label_bg = pygame.Rect(0, 0, name_label.get_width() + 14, name_label.get_height() + 6)
+            label_bg.center = (position[0], position[1] + 62)
+            _draw_rounded_rect(surface, (20, 20, 30, 190), label_bg, radius=8)
+            surface.blit(name_label, name_label.get_rect(center=label_bg.center))
 
     def _trigger_move_animation(self, move: Move, target_pos: Tuple[int, int]):
         if not move or not target_pos:

@@ -1736,7 +1736,7 @@ class RockAnimation(BattleAnimation):
 class VSScreenAnimation:
     """VS screen shown at battle start with diagonal split panels."""
 
-    def __init__(self, screen_width: int, screen_height: int, duration: float = 2.0):
+    def __init__(self, screen_width: int, screen_height: int, duration: float = 1.4):
         self.screen_width = screen_width
         self.screen_height = screen_height
         self.duration = duration
@@ -1748,7 +1748,9 @@ class VSScreenAnimation:
         if self.elapsed >= self.duration:
             self.active = False
 
-    def render(self, screen: pygame.Surface, player_name: str = "", opponent_name: str = ""):
+    def render(self, screen: pygame.Surface, player_name: str = "", opponent_name: str = "",
+               player_sprite: Optional[pygame.Surface] = None,
+               opponent_sprite: Optional[pygame.Surface] = None):
         if not self.active:
             return
 
@@ -1860,11 +1862,16 @@ class VSScreenAnimation:
             vs_outline.set_alpha(vs_alpha // 3)
             screen.blit(vs_outline, vs_outline.get_rect(center=(cx, cy)))
 
-        # Player and opponent names
+        # Player and opponent portraits + names
         if 0.3 < progress < 0.9:
             name_progress = min(1.0, (progress - 0.3) / 0.15)
             name_alpha = int(alpha * BattleAnimation.ease_out_cubic(name_progress))
             name_font = pygame.font.Font(None, 36)
+
+            self._render_portrait(screen, player_sprite, self.screen_width // 4,
+                                  name_progress, name_alpha, from_left=True)
+            self._render_portrait(screen, opponent_sprite, self.screen_width * 3 // 4,
+                                  name_progress, name_alpha, from_left=False)
 
             if player_name:
                 # Slide in from left
@@ -1897,6 +1904,30 @@ class VSScreenAnimation:
                             ot.get_rect(
                                 center=(self.screen_width * 3 // 4 + x_offset,
                                         self.screen_height // 2 + 60)))
+
+    def _render_portrait(self, screen: pygame.Surface, sprite: Optional[pygame.Surface],
+                         center_x: int, progress: float, alpha: int, from_left: bool):
+        """Draw one combatant's portrait sliding onto its half of the VS screen."""
+        if sprite is None or alpha <= 0:
+            return
+
+        eased = BattleAnimation.ease_out_cubic(progress)
+        slide = int(40 * (1 - eased))
+        x = center_x - slide if from_left else center_x + slide
+        y = self.screen_height // 2 - 40
+
+        # Soft disc behind the sprite so it reads against the flat panel color
+        disc_r = 92
+        disc = pygame.Surface((disc_r * 2, disc_r * 2), pygame.SRCALPHA)
+        pygame.draw.circle(disc, (255, 255, 255, int(30 * eased)),
+                           (disc_r, disc_r), disc_r)
+        pygame.draw.circle(disc, (255, 255, 255, int(90 * eased)),
+                           (disc_r, disc_r), disc_r, 3)
+        screen.blit(disc, (x - disc_r, y - disc_r))
+
+        portrait = sprite.copy()
+        portrait.set_alpha(alpha)
+        screen.blit(portrait, portrait.get_rect(center=(x, y)))
 
 
 class ShakeAnimation:
@@ -2008,10 +2039,13 @@ class BattleAnimationManager:
             popup.render(screen)
 
     def render_vs_screen(self, screen: pygame.Surface,
-                         player_name: str = "", opponent_name: str = ""):
+                         player_name: str = "", opponent_name: str = "",
+                         player_sprite: Optional[pygame.Surface] = None,
+                         opponent_sprite: Optional[pygame.Surface] = None):
         """Render VS screen if active."""
         if self.vs_screen:
-            self.vs_screen.render(screen, player_name, opponent_name)
+            self.vs_screen.render(screen, player_name, opponent_name,
+                                  player_sprite, opponent_sprite)
 
     def get_screen_offset(self) -> Tuple[int, int]:
         """Get current screen shake offset."""

@@ -4,6 +4,7 @@ Player Class - Represents the game player
 
 from typing import List, Optional, Tuple
 from .pokemon import Pokemon
+from .map import START_MAP, START_X, START_Y
 import pygame
 import os
 import math
@@ -42,17 +43,20 @@ class Player:
         self.defeated_trainers: set = set()
 
         # Last healed location (for whiteout respawn)
-        self.last_healed_map = "pallet_town"
-        self.last_healed_x = 10
-        self.last_healed_y = 10
+        self.last_healed_map = START_MAP
+        self.last_healed_x = START_X
+        self.last_healed_y = START_Y
 
         # Movement state
         self.facing_direction = "down"
         self.is_moving = False
         self.is_running = False
         self.move_progress = 0.0
-        self.move_cooldown = 0.0
-        
+        # Progress overshoot left over from the tile just finished, carried into
+        # the next step so holding a direction scrolls continuously instead of
+        # stalling for a frame on every tile boundary.
+        self.move_carry = 0.0
+
         # Sprite data
         self.sprite_frame = 0
         self.animation_timer = 0.0
@@ -144,7 +148,7 @@ class Player:
     
     def start_move(self, direction: str, is_running: bool = False):
         """Start moving in a direction if not already moving."""
-        if self.is_moving or self.move_cooldown > 0:
+        if self.is_moving:
             return False
         
         # Calculate target position based on direction
@@ -167,16 +171,22 @@ class Player:
         self.target_y = new_grid_y * self.TILE_SIZE
         self.is_moving = True
         self.is_running = is_running
-        self.move_progress = 0.0
-        
+        # Start from the overshoot of the previous step, so the tile-to-tile
+        # seam doesn't eat a fraction of a frame's worth of movement.
+        self.move_progress = min(0.9, self.move_carry)
+        self.move_carry = 0.0
+
+        # Apply the carried progress immediately so this frame already renders
+        # the player past the tile boundary rather than snapped back onto it.
+        start_x = self.grid_x * self.TILE_SIZE
+        start_y = self.grid_y * self.TILE_SIZE
+        self.pixel_x = start_x + (self.target_x - start_x) * self.move_progress
+        self.pixel_y = start_y + (self.target_y - start_y) * self.move_progress
+
         return True
     
     def update(self, dt: float):
         """Update player movement and animation."""
-        # Update movement cooldown
-        if self.move_cooldown > 0:
-            self.move_cooldown -= dt
-        
         # Update movement
         if self.is_moving:
             # Calculate move speed
@@ -184,15 +194,15 @@ class Player:
             self.move_progress += speed * dt
             
             if self.move_progress >= 1.0:
-                # Movement complete
+                # Movement complete -- keep the overshoot for the next step so a
+                # held direction doesn't lose time at every tile boundary
+                self.move_carry = self.move_progress - 1.0
                 self.pixel_x = self.target_x
                 self.pixel_y = self.target_y
                 self.grid_x = self.pixel_x // self.TILE_SIZE
                 self.grid_y = self.pixel_y // self.TILE_SIZE
                 self.is_moving = False
                 self.move_progress = 0.0
-                # Small cooldown to prevent movement feeling too fast
-                self.move_cooldown = 0.02
             else:
                 # Interpolate position
                 start_x = self.grid_x * self.TILE_SIZE

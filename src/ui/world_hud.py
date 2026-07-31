@@ -19,10 +19,26 @@ class WorldHUD:
         self.font_small = font_small
         self.font_medium = font_medium
 
+        # Fonts and the static hint bar are built once: constructing a Font
+        # re-opens the font file, and doing that three times per frame plus
+        # re-rendering the unchanging hint text cost ~4ms of every frame.
+        self._font_name = pygame.font.Font(None, 22)
+        self._font_level = pygame.font.Font(None, 19)
+        self._hint_surface = self._build_hint_surface()
+
         # Location banner
         self._location_name = ""
         self._location_alpha = 0.0
         self._location_timer = 0.0
+
+    def _build_hint_surface(self) -> pygame.Surface:
+        """The bottom control-hint bar never changes -- draw it once."""
+        hint_text = "SPACE: Interact  |  P: Pokemon  |  I: Items  |  ESC: Menu"
+        surf = pygame.Surface((self.screen_width, 30), pygame.SRCALPHA)
+        surf.fill((10, 10, 20, 130))
+        ht = self.font_small.render(hint_text, True, Colors.TEXT_SECONDARY)
+        surf.blit(ht, ht.get_rect(center=(self.screen_width // 2, 15)))
+        return surf
 
     def show_location(self, name: str):
         """Show a location banner that fades in and out."""
@@ -78,11 +94,9 @@ class WorldHUD:
             pygame.draw.rect(mini_surf, (*Colors.CARD_BORDER, 185),
                              (0, 0, mini_w, mini_h), width=1, border_radius=10)
 
-            name_font = pygame.font.Font(None, 22)
-            ns = name_font.render(p.nickname, True, Colors.TEXT_PRIMARY)
+            ns = self._font_name.render(p.nickname, True, Colors.TEXT_PRIMARY)
             mini_surf.blit(ns, (10, 7))
-            lv_font = pygame.font.Font(None, 19)
-            lv_surf = lv_font.render(f"Lv.{p.level}", True, Colors.TEXT_SECONDARY)
+            lv_surf = self._font_level.render(f"Lv.{p.level}", True, Colors.TEXT_SECONDARY)
             mini_surf.blit(lv_surf, (mini_w - 10 - lv_surf.get_width(), 9))
 
             hp_pct = p.current_hp / p.stats["hp"] if p.stats["hp"] else 0
@@ -94,16 +108,11 @@ class WorldHUD:
                 fw = max(bar_h, int(bar_w * hp_pct))
                 pygame.draw.rect(mini_surf, hc, (bar_x, bar_y, fw, bar_h), border_radius=4)
 
-            hp_font = pygame.font.Font(None, 19)
-            hp_txt = hp_font.render(f"HP {p.current_hp}/{p.stats['hp']}", True, Colors.TEXT_SECONDARY)
+            hp_txt = self._font_level.render(
+                f"HP {p.current_hp}/{p.stats['hp']}", True, Colors.TEXT_SECONDARY)
             mini_surf.blit(hp_txt, (10, 44))
 
             self.screen.blit(mini_surf, (mx, my))
 
         # -- Bottom: context action hint --
-        hint_text = "SPACE: Interact  |  P: Pokemon  |  I: Items  |  ESC: Menu"
-        hint_surf = pygame.Surface((self.screen_width, 30), pygame.SRCALPHA)
-        hint_surf.fill((10, 10, 20, 130))
-        ht = self.font_small.render(hint_text, True, Colors.TEXT_SECONDARY)
-        hint_surf.blit(ht, ht.get_rect(center=(self.screen_width // 2, 15)))
-        self.screen.blit(hint_surf, (0, self.screen_height - 30))
+        self.screen.blit(self._hint_surface, (0, self.screen_height - 30))

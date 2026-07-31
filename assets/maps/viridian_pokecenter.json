@@ -1,10 +1,10 @@
 {
-    "id": "pokecenter_1",
+    "id": "viridian_pokecenter",
     "name": "Pokemon Center",
     "width": 11,
     "height": 9,
     "music": "pokecenter.mp3",
-    "description": "Pallet Town's Pokemon Center. Nurse Joy stands in the gap in the counter, straight up from the door.",
+    "description": "Viridian City's Pokemon Center.",
     "wild_pokemon": null,
     "npcs": [
         {
@@ -13,9 +13,9 @@
             "y": 1,
             "sprite": "nurse_joy",
             "dialogue": [
-                "Welcome to the Pokemon Center!",
-                "We restore your tired Pokemon to full health.",
-                "...All done! Your Pokemon are fully healed.",
+                "Welcome to the Viridian City Pokemon Center!",
+                "Shall I heal your Pokemon?",
+                "...All done! Your team is in perfect shape.",
                 "We hope to see you again!"
             ],
             "facing": "down",
@@ -24,15 +24,15 @@
             "action": "heal"
         },
         {
-            "name": "Trainer",
-            "x": 9,
-            "y": 4,
-            "sprite": "trainer",
+            "name": "Waiting Trainer",
+            "x": 2,
+            "y": 5,
+            "sprite": "youngster",
             "dialogue": [
-                "The PC in the corner stores your extra Pokemon.",
-                "Handy once your team fills up!"
+                "Route 1 runs south from here, all the way to Pallet Town.",
+                "The road north to Route 2 is still shut, though."
             ],
-            "facing": "left",
+            "facing": "right",
             "movement_type": "static"
         }
     ]

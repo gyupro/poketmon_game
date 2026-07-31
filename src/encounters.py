@@ -104,6 +104,19 @@ class EncounterSystem:
             ]
         )
 
+        # Viridian City - the tall grass on the town's outskirts. Without this
+        # table that grass looked like an encounter spot but never spawned
+        # anything.
+        tables["viridian_city"] = EncounterTable(
+            area_name="Viridian City",
+            base_encounter_rate=8,
+            encounters=[
+                EncounterData(16, 3, 6, EncounterRarity.COMMON),    # Pidgey
+                EncounterData(19, 3, 5, EncounterRarity.UNCOMMON),  # Rattata
+                EncounterData(41, 4, 6, EncounterRarity.RARE),      # Zubat
+            ]
+        )
+
         # Viridian Forest - Placeholder for future phases
         tables["viridian_forest"] = EncounterTable(
             area_name="Viridian Forest",
