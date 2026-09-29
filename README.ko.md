@@ -12,7 +12,7 @@ Claude 버전별로 만든 포켓몬 게임을 비교한 기록이에요.
 ### Before (2025 Claude)
 ![Before - Battle Animation](docs/versions/2025_claude.gif)
 
-### After (2026 Claude)
+### After (Claude Sonnet 5)
 
 Python + Pygame으로 만든 버전이에요. 코드는 [`python-version` 태그](https://github.com/gyupro/poketmon_game/tree/python-version)에 남아 있어요.
 

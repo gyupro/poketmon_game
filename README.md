@@ -12,7 +12,7 @@ A record comparing the Pokémon games built by different versions of Claude.
 ### Before (2025 Claude)
 ![Before - Battle Animation](docs/versions/2025_claude.gif)
 
-### After (2026 Claude)
+### After (Claude Sonnet 5)
 
 A Python + Pygame version. Its code lives on in the [`python-version` tag](https://github.com/gyupro/poketmon_game/tree/python-version).
 
