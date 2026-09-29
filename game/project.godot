@@ -1,0 +1,52 @@
+; Engine configuration file.
+
+config_version=5
+
+[application]
+
+config/name="Pokemon Red Online"
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.4", "GL Compatibility")
+
+[autoload]
+
+DB="*res://scripts/core/db.gd"
+G="*res://scripts/core/game_state.gd"
+Net="*res://scripts/core/net.gd"
+UI="*res://scripts/ui/ui.gd"
+Sound="*res://scripts/core/sound.gd"
+
+[display]
+
+window/size/viewport_width=160
+window/size/viewport_height=144
+window/size/window_width_override=640
+window/size/window_height_override=576
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+
+[gui]
+
+theme/custom_font="res://assets/font/Galmuri9.ttf"
+theme/default_font_size=10
+
+[rendering]
+
+textures/canvas_textures/default_texture_filter=0
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+2d/snap/snap_2d_transforms_to_pixel=true
+2d/snap/snap_2d_vertices_to_pixel=true
+environment/defaults/default_clear_color=Color(1, 1, 1, 1)
+
+[debug]
+
+gdscript/warnings/inference_on_variant=1
+gdscript/warnings/unused_variable=0
+gdscript/warnings/unused_parameter=0
+gdscript/warnings/shadowed_variable=0
+gdscript/warnings/integer_division=0
+gdscript/warnings/narrowing_conversion=0
+gdscript/warnings/return_value_discarded=0
+gdscript/warnings/standalone_ternary=0
+gdscript/warnings/unused_signal=0

@@ -1,146 +1,111 @@
-# Pokemon Game
+# 포켓몬스터 레드 온라인 (Godot 4.4)
 
-A feature-rich Pokemon-style RPG game built with Python and Pygame, featuring turn-based battles, world exploration, and all the classic Pokemon mechanics.
+> **Claude Opus 5.5로 만든 포켓몬입니다.**
+> 기획부터 원작 데이터 변환기, 게임 코드, 사운드 렌더러, 한국어 번역, 테스트까지 전부 Anthropic의 Claude Opus 5.5(Claude Code)가 작성했습니다.
 
-## Before / After
+원작 **포켓몬스터 레드**의 역어셈블리 소스([pret/pokered](https://github.com/pret/pokered))에서
+맵·그래픽·음악·포켓몬·기술·트레이너·대사를 전부 추출해 Godot으로 다시 만든 **2인 협동 멀티플레이 + 한국어** 버전입니다.
+태초마을부터 챔피언, 전당 등록, 엔딩까지 원작 스토리를 모두 즐길 수 있습니다.
 
-### Before (2025 Claude)
-![Before - Battle Animation](Animation.gif)
+| 필드 · 배틀 · 파도타기 | 스토리 (오박사 등장) |
+|:---:|:---:|
+| ![플레이 영상](docs/play.gif) | ![스토리 영상](docs/story.gif) |
 
-### After (2026 Claude)
+## 주요 기능
 
-| World Exploration | Battle System |
-|:-:|:-:|
-| ![Pallet Town](assets/screenshots/world_npc.png) | ![Battle Scene](assets/screenshots/battle_scene.png) |
-| *Textured tiles, animated NPCs, character sprites* | *Gradient sky, type badges, HP bars* |
+- **원작 맵 222개**: 타일, 충돌, 턱, 문, 워프, 맵 연결, NPC, 표지판, 숨겨진 아이템까지 원작과 같아요. 마을마다 슈퍼게임보이 색이 들어가요.
+- **1세대 배틀**:
+  - 데미지 공식, 급소, 타입 상성, 상태이상, 기술 효과 대부분
+  - 포획, 경험치, 기술 배우기, 진화(레벨/돌/교환)
+- **음악·효과음·울음소리**: 원작 사운드 데이터를 게임보이 음원처럼 직접 연주해서 렌더링했어요.
+  - BGM 45곡, 효과음 104개, 포켓몬 울음소리 151종
+- **필드 기술**:
+  - 풀베기, 파도타기, 괴력, 플래시, 공중날기, 구멍파기, 순간이동, 알까기
+  - 자전거, 낚싯대 3종, 기술머신·비전머신
+- **스토리 전체**:
+  - 체육관 관장 8명
+  - 로켓단 아지트, 포켓몬타워, 실프주식회사(카드키)
+  - 사파리존, 홍련섬 퀴즈, 쌍둥이섬, 챔피언로드 퍼즐
+  - 사천왕, 챔피언, 전당 등록, 엔딩
+- **부가 요소**: 게임코너 슬롯·경품, 자판기, 이름 평가인, 키우미집, NPC 교환, 화석 부활, 전설의 포켓몬
+- **한국어**: 대사 약 1,870개와 포켓몬·기술·도구 이름을 한국어로 옮겼어요.
+- **멀티플레이**: 친구와 같은 월드에서 서로 보면서 모험할 수 있고, 통신 대전과 교환도 돼요.
 
-| Pokemon Team | Pause Menu |
-|:-:|:-:|
-| ![Pokemon Menu](assets/screenshots/pokemon_menu.png) | ![Pause Menu](assets/screenshots/pause_menu.png) |
-| *Card layout with moves, stats, type badges* | *Dark-theme translucent overlay* |
+## 설치 (소스에서)
 
-| Starter Selection |
-|:-:|
-| ![Starter Select](assets/screenshots/starter_select.png) |
-| *Choose Bulbasaur, Charmander, or Squirtle* |
+원작 그래픽·음악·데이터는 닌텐도의 저작물이라 **이 저장소에는 들어 있지 않아요.**
+대신 pret/pokered 역어셈블리에서 직접 생성하는 스크립트가 들어 있어요.
 
-## Features
-
-### Core Gameplay
-- **Starter Pokemon Selection** - Choose between Bulbasaur, Charmander, or Squirtle
-- **Turn-Based Battle System** with type effectiveness (18 types), physical/special split, status conditions, critical hits, and leveling
-- **22 Battle Animations** - Unique visual effects for every Pokemon type (fire, water, electric, psychic, ghost, etc.)
-- **VS Screen** with split-screen animation when battles begin
-- **Damage Popups** showing effectiveness text
-
-### World Exploration
-- **Grid-Based Movement** with smooth interpolation and running (Shift)
-- **Textured Tile Rendering** - Grass blades, water ripples, brick patterns, flower animations, tree canopies
-- **Character Sprites** - Player with cap/jacket/walking animation, NPCs with role-based outfits
-- **Smooth Camera** with lerp following and map boundary clamping
-- **Fade-to-Black Map Transitions** with area name banner
-- **Day/Night Tint** based on system time
-- **Ambient Effects** - Grass particles, water sparkles
-- **NPC Interaction Indicators** - "!" for trainers, "..." for regular NPCs
-
-### Pokemon System
-- 14 Pokemon species with full stat systems (IVs, EVs, Natures)
-- Abilities, move learning, PP system
-- Shiny Pokemon (0.1% chance)
-- Status conditions (Paralysis, Burn, Poison, Sleep, Freeze, Confusion)
-
-### UI/UX
-- **Dark Theme Design System** with consistent color palette
-- **Battle UI** - Gradient HP bars, type badge pills, 2x2 move grid with PP/power/category
-- **Pokemon Team Menu** - Card layout with expandable details
-- **Bag Menu** - Category tabs with item descriptions
-- **Pause Menu** - Translucent overlay with card-style buttons
-- **Dialog System** - Semi-transparent boxes with typewriter text and bouncing arrow indicator
-- **World HUD** - Location banner, mini Pokemon info, context action hints
-
-### NPCs and Interactions
-- Professor Oak, Rival Gary, Nurse Joy, Trainers, Townspeople
-- Role-based outfits and hair colors
-- Idle breathing animation and proximity indicators
-
-## Getting Started
-
-### Prerequisites
-- Python 3.10+
-
-### Setup
+필요한 것:
+- [Godot 4.4.1](https://godotengine.org/download/archive/4.4.1-stable/) (Standard)
+- Python 3.10 이상, `pip install pillow numpy`
+- git
 
 ```bash
-git clone https://github.com/gyupro/poketmon_game.git
+git clone https://github.com/gyupro/poketmon_game
 cd poketmon_game
-pip install -r requirements.txt
-python main.py
+python tools/setup.py "C:\Godot\Godot_v4.4.1-stable_win64_console.exe"
 ```
 
-Dependencies: pygame, requests, pillow
+`setup.py`가 하는 일:
+1. pret/pokered를 `pokered_src/`로 받아요.
+2. 음악과 효과음을 렌더링해요.
+3. 맵, 그래픽, 데이터를 변환해요.
+4. Godot 임포트까지 실행해요.
 
-## Controls
+끝나면 `play.bat`(Godot 경로가 `C:\Godot`일 때)을 실행하거나, Godot 에디터로 `game/project.godot`을 열고 F5를 누르면 돼요.
 
-### World
-| Key | Action |
-|-----|--------|
-| Arrow Keys / WASD | Move |
-| Shift | Run |
-| Space | Interact |
-| P | Pokemon Menu |
-| I | Inventory |
-| ESC | Pause |
+친구에게 보낼 실행 파일 묶음은 `python tools/make_package.py`로 만들어요. `dist/pokemon_online.zip`이 생기고, Godot가 포함돼 있어서 압축을 풀고 `play.bat`만 실행하면 돼요.
 
-### Battle
-| Key | Action |
-|-----|--------|
-| Arrow Keys | Navigate |
-| Enter/Space | Confirm |
-| ESC | Back |
-| 1-4 | Quick select move |
+## 조작
 
-## Finding Wild Pokemon
+| 키 | 기능 |
+|---|---|
+| 방향키 / WASD | 이동 (톡 치면 방향만 전환) |
+| Z / Space / J | A 버튼 (말 걸기·결정) |
+| X / Backspace / K | B 버튼 (취소) · 필드에서 누른 채 걸으면 달리기 |
+| Enter | START (메뉴) |
+| Shift | SELECT · 자전거 타기/내리기 |
 
-1. Exit Pallet Town from the **top** (x=18-22, y=0)
-2. Walk through **tall grass** in Route 1
-3. Encounters trigger automatically (~12% per step)
+나무 앞이나 물가에서 A를 누르면 풀베기·파도타기를 바로 쓸 수 있어요.
 
-## Project Structure
+## 친구와 같이 하기
+
+1. 한 명이 타이틀에서 **방 만들기**를 누르면 화면에 IP가 나와요. 이 IP를 친구에게 알려 주세요.
+2. 친구는 **친구 방 참가**를 누르고 IP를 입력해요.
+3. 같은 맵에 있으면 서로 보여요. 친구 앞에서 **A**를 누르면 **대전 / 교환**을 신청할 수 있어요.
+
+- 포트는 **UDP 24680**이에요. 인터넷으로 할 때는 아래 중 하나를 쓰면 돼요.
+  - Radmin VPN / Tailscale / ZeroTier 같은 가상 LAN (가장 쉬워요)
+  - 호스트 공유기에서 포트포워딩
+- 세이브는 각자 따로예요.
+  - 대전은 원작 통신대전처럼 결과가 파티에 영향을 주지 않아요.
+  - 교환은 실제로 교환되고, 교환 진화(윤겔라 → 후딘 등)도 돼요.
+
+## 구조
 
 ```
-poketmon_game/
-├── main.py                    # Entry point
-├── src/
-│   ├── game.py               # Game loop & state management
-│   ├── pokemon.py            # Pokemon classes & species data
-│   ├── battle.py             # Battle system
-│   ├── battle_animations.py  # 22 type-specific visual effects
-│   ├── ui.py                 # Modern dark-theme UI system
-│   ├── world.py              # World, NPCs, camera, transitions
-│   ├── map.py                # Tile rendering with textures
-│   ├── player.py             # Player character & sprite
-│   ├── encounters.py         # Wild encounter tables
-│   ├── encounter_effects.py  # Encounter transition effects
-│   └── items.py              # Item system
-├── assets/
-│   ├── sprites/              # Pokemon sprite images
-│   ├── maps/                 # Map JSON data
-│   └── screenshots/          # Game screenshots
-├── tests/                    # Test suite
-└── utils/                    # Sprite downloader
+tools/
+  setup.py           처음 설치 (pokered 받기 → 음원 렌더링 → 데이터 변환 → 임포트)
+  convert.py         pokered → game/data/*.json, game/assets/** 변환기
+  audio_render.py    pokered 사운드 엔진 재현 → 음악/효과음/울음소리 WAV
+  ko_names.py        포켓몬/기술/도구/트레이너 한국어 이름
+  make_package.py    친구용 실행 zip 생성
+game/
+  data/ko.json       한국어 대사 (키: 원작 텍스트 라벨) ← 번역 수정은 여기
+  scripts/core/      데이터, 세이브, 포켓몬 계산, 사운드, 네트워크, 대전/교환
+  scripts/overworld/ 필드, 캐릭터, 필드 기술, 이벤트 분배
+  scripts/story/     구간별 스토리 스크립트, 체육관 관장 ← 스토리 수정은 여기
+  scripts/battle/    1세대 배틀 로직, 배틀 화면/PvP
+  scripts/ui/        대화창, 메뉴, 타이틀
+  scripts/debug/     자동 테스트 (Godot --path game -- autotest=명령파일)
 ```
 
-## Running Tests
+## 크레딧
 
-```bash
-pip install pytest
-python -m pytest tests/ -v
-```
+- 원작: GAME FREAK / Nintendo / Creatures — 포켓몬스터 레드
+- 역어셈블리: [pret/pokered](https://github.com/pret/pokered)
+- 폰트: [Galmuri](https://github.com/quiple/galmuri) (SIL Open Font License 1.1)
+- 개발: **Claude Opus 5.5** (Anthropic, Claude Code)
 
-## Disclaimer
-
-This is a fan-made game for educational purposes. Pokemon is a trademark of Nintendo/Game Freak/Creatures Inc. Sprite assets from PokeAPI used under fair use.
-
-## License
-
-Educational purposes only. See repository for details.
+비상업적인 팬 프로젝트이며, 포켓몬 관련 권리는 모두 원저작자에게 있어요.
