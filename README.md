@@ -3,9 +3,37 @@
 > **Claude Opus 5.5로 만든 포켓몬입니다.**
 > 기획부터 원작 데이터 변환기, 게임 코드, 사운드 렌더러, 한국어 번역, 테스트까지 전부 Anthropic의 Claude Opus 5.5(Claude Code)가 작성했습니다.
 
+Claude 버전별로 만든 포켓몬 게임을 비교한 기록이에요.
+
+## Before / After
+
+### Before (2025 Claude)
+![Before - Battle Animation](docs/versions/2025_claude.gif)
+
+### After (2026 Claude)
+
+Python + Pygame으로 만든 버전이에요. 코드는 [`python-version` 태그](https://github.com/gyupro/poketmon_game/tree/python-version)에 남아 있어요.
+
+| World Exploration | Battle System |
+|:-:|:-:|
+| ![Pallet Town](docs/versions/2026_world_npc.png) | ![Battle Scene](docs/versions/2026_battle_scene.png) |
+| *Textured tiles, animated NPCs, character sprites* | *Gradient sky, type badges, HP bars* |
+
+| Pokemon Team | Pause Menu |
+|:-:|:-:|
+| ![Pokemon Menu](docs/versions/2026_pokemon_menu.png) | ![Pause Menu](docs/versions/2026_pause_menu.png) |
+| *Card layout with moves, stats, type badges* | *Dark-theme translucent overlay* |
+
+| Starter Selection |
+|:-:|
+| ![Starter Select](docs/versions/2026_starter_select.png) |
+| *Choose Bulbasaur, Charmander, or Squirtle* |
+
+### Now (Claude Opus 5.5)
+
 원작 **포켓몬스터 레드**의 역어셈블리 소스([pret/pokered](https://github.com/pret/pokered))에서
-맵·그래픽·음악·포켓몬·기술·트레이너·대사를 전부 추출해 Godot으로 다시 만든 **2인 협동 멀티플레이 + 한국어** 버전입니다.
-태초마을부터 챔피언, 전당 등록, 엔딩까지 원작 스토리를 모두 즐길 수 있습니다.
+맵·그래픽·음악·포켓몬·기술·트레이너·대사를 전부 추출해 Godot으로 다시 만든 **2인 협동 멀티플레이 + 한국어** 버전이에요.
+태초마을부터 챔피언, 전당 등록, 엔딩까지 원작 스토리를 모두 즐길 수 있어요.
 
 | 필드 · 배틀 · 파도타기 | 스토리 (오박사 등장) |
 |:---:|:---:|
